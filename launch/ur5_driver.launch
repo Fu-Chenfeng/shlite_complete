@@ -1,0 +1,15 @@
+<launch>
+  <arg name="robot_ip" default="192.168.1.10"/>
+  <arg name="reverse_ip" default=""/>
+  <!-- Keep ur5_docker's unprefixed model and scaled trajectory controller.
+       Isolate its parameters and TF from the combined MoveIt description. -->
+  <group ns="ur5_driver">
+    <remap from="/joint_states" to="/ur5_driver/joint_states"/>
+    <remap from="/tf" to="/ur5_driver/tf"/>
+    <remap from="/tf_static" to="/ur5_driver/tf_static"/>
+    <include file="$(find ur_robot_driver)/launch/ur5_bringup.launch">
+      <arg name="robot_ip" value="$(arg robot_ip)"/>
+      <arg name="reverse_ip" value="$(arg reverse_ip)"/>
+    </include>
+  </group>
+</launch>

@@ -1,0 +1,80 @@
+name: shlite_complete
+
+x-shadow: &shadow
+  image: ${SHADOW_IMAGE:-public.ecr.aws/shadowrobot/dexterous-hand:noetic-release}
+  network_mode: host
+  ipc: host
+  stdin_open: true
+  tty: true
+  working_dir: /project
+  entrypoint: ["/project/docker/shadow-entrypoint.sh"]
+  command: ["sleep", "infinity"]
+
+x-shadow-env: &shadow-env
+  DISPLAY: ${DISPLAY:-:0}
+  QT_X11_NO_MITSHM: "1"
+  LIBGL_ALWAYS_SOFTWARE: ${LIBGL_ALWAYS_SOFTWARE:-1}
+  LOCAL_USER_ID: ${HOST_UID:-1000}
+  LOCAL_GROUP_ID: ${HOST_GID:-1000}
+  PYTHONDONTWRITEBYTECODE: "1"
+  TRAJECTORY_ROOT: /project/trajectories
+  GAZEBO_MODEL_PATH: /project/assets/models
+
+services:
+  sim:
+    <<: *shadow
+    profiles: [sim]
+    environment:
+      <<: *shadow-env
+      SESSION_MODE: sim
+      ROS_MASTER_URI: http://127.0.0.1:${ROS_PORT:-11311}
+      ROS_IP: 127.0.0.1
+    volumes:
+      - .:/project:ro
+      - ./trajectories:/project/trajectories
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - sim-ros:/home/user/.ros
+      - sim-gazebo:/home/user/.gazebo
+
+  workstation:
+    <<: *shadow
+    profiles: [real]
+    environment:
+      <<: *shadow-env
+      SESSION_MODE: real
+      ROS_MASTER_URI: http://${PC_IP:-10.9.11.1}:${ROS_PORT:-11311}
+      ROS_IP: ${PC_IP:-10.9.11.1}
+    extra_hosts:
+      - "server:${PC_IP:-10.9.11.1}"
+      - "nuc-control:${NUC_IP:-10.9.11.186}"
+    volumes:
+      - .:/project:ro
+      - ./trajectories:/project/trajectories
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - real-ros:/home/user/.ros
+
+  ur5:
+    profiles: [real]
+    image: ${UR5_IMAGE:-shlite-complete-ur5:noetic}
+    build:
+      context: .
+      dockerfile: docker/ur5.Dockerfile
+    network_mode: host
+    stdin_open: true
+    tty: true
+    working_dir: /project
+    command: ["sleep", "infinity"]
+    environment:
+      ROS_MASTER_URI: http://${PC_IP:-10.9.11.1}:${ROS_PORT:-11311}
+      ROS_IP: ${PC_IP:-10.9.11.1}
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - .:/project:ro
+      - ./config/ur_macro.xacro:/opt/ros/noetic/share/ur_description/urdf/inc/ur_macro.xacro:ro
+      - ur5-ros:/root/.ros
+
+volumes:
+  sim-ros:
+  sim-gazebo:
+  real-ros:
+  ur5-ros:

@@ -1,0 +1,3 @@
+# The vendor's optional cross-robot named poses reference WRJ1/WRJ2, which
+# this hand_g model does not actuate. Saved trajectory replay does not use them.
+{}

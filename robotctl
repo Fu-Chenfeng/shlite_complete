@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""Run shlite_complete simulation or real arm-and-hand sessions."""
+import argparse
+import getpass
+import json
+import os
+from pathlib import Path
+import shlex
+import socket
+import subprocess
+import sys
+import xmlrpc.client
+
+ROOT = Path(__file__).resolve().parent
+SHADOW_SETUP = "/home/user/projects/shadow_robot/base/devel/setup.bash"
+
+
+class UserError(Exception):
+    pass
+
+
+def run(argv, **kwargs):
+    return subprocess.run([str(arg) for arg in argv], check=True, **kwargs)
+
+
+def initialize():
+    target = ROOT / ".env"
+    if not target.exists():
+        text = (ROOT / ".env.example").read_text()
+        text = text.replace("HOST_UID=1000", "HOST_UID=%s" % os.getuid())
+        text = text.replace("HOST_GID=1000", "HOST_GID=%s" % os.getgid())
+        text = text.replace("DISPLAY=:0", "DISPLAY=%s" % os.environ.get("DISPLAY", ":0"))
+        target.write_text(text)
+        print("Created .env. Edit its network settings for this machine.")
+    for name in ("arm", "hand"):
+        (ROOT / "trajectories" / name).mkdir(parents=True, exist_ok=True)
+
+
+def configuration():
+    # .env is data, never sourced as shell code. Values are plain KEY=value.
+    cfg = {}
+    for filename in (".env.example", ".env"):
+        path = ROOT / filename
+        if path.exists():
+            for line in path.read_text().splitlines():
+                if line.strip() and not line.lstrip().startswith("#"):
+                    key, value = line.split("=", 1)
+                    cfg[key.strip()] = value.strip()
+    # Exported overrides and Compose see the same settings.
+    cfg.update({key: os.environ[key] for key in cfg if key in os.environ})
+    cfg["SSH_KEY"] = str(Path(cfg["SSH_KEY"]).expanduser())
+    return cfg
+
+
+def compose(cfg, *args, capture=False):
+    env = dict(os.environ, **cfg)
+    return run(["docker", "compose", "--project-directory", ROOT,
+                "--env-file", ROOT / ".env", "--profile", "*", *args],
+               env=env, text=True, capture_output=capture)
+
+
+def uri(cfg, mode):
+    return "http://%s:%s" % ("127.0.0.1" if mode == "sim" else cfg["PC_IP"], cfg["ROS_PORT"])
+
+
+def master(cfg, mode):
+    socket.setdefaulttimeout(3)
+    proxy = xmlrpc.client.ServerProxy(uri(cfg, mode))
+    try:
+        if proxy.getPid("/shlite_complete")[0] != 1:
+            raise OSError("master did not respond successfully")
+    except (OSError, xmlrpc.client.Error) as exc:
+        raise UserError("ROS core is unavailable at %s. Start '%s core' first (or 'sim start')." %
+                        (uri(cfg, mode), mode)) from exc
+    return proxy
+
+
+def ensure_no_master(cfg, mode):
+    try:
+        master(cfg, mode)
+    except UserError:
+        return
+    raise UserError("A ROS master is already running at %s. Stop the previous session first." % uri(cfg, mode))
+
+
+def ros_command(cfg, mode, argv, service=None, capture=False):
+    service = service or ("sim" if mode == "sim" else "workstation")
+    setup = "/opt/ros/noetic/setup.bash" if service == "ur5" else SHADOW_SETUP
+    ip = "127.0.0.1" if mode == "sim" else cfg["PC_IP"]
+    command = "set -e; source %s; unset ROS_HOSTNAME; export ROS_IP=%s ROS_MASTER_URI=%s; exec %s" % (
+        shlex.quote(setup), shlex.quote(ip), shlex.quote(uri(cfg, mode)), shlex.join(argv))
+    flags = ["-T"] if capture or not sys.stdin.isatty() else []
+    user = [] if service == "ur5" else ["--user", "user"]
+    return compose(cfg, "exec", *flags, *user, service, "bash", "-lc", command, capture=capture)
+
+
+def ssh(cfg, command, terminal=False, capture=False):
+    flags = ["-t"] if terminal and sys.stdin.isatty() else []
+    return run(["ssh", *flags, "-i", cfg["SSH_KEY"], "-o", "IdentitiesOnly=yes",
+                "-o", "ConnectTimeout=5", "%s@%s" % (cfg["NUC_USER"], cfg["NUC_IP"]), command],
+               text=True, capture_output=capture)
+
+
+def start_nuc(cfg):
+    proxy = master(cfg, "real")
+    code, _, node_uri = proxy.lookupNode("/shlite_complete", "/sr_hand_robot")
+    if code == 1:
+        try:
+            alive = xmlrpc.client.ServerProxy(node_uri).getPid("/shlite_complete")[0] == 1
+        except (OSError, xmlrpc.client.Error):
+            alive = False
+        if alive:
+            raise UserError("The hand hardware loop is already running. Do not launch it twice.")
+    # Check the callback route and NTP before starting any remote container.
+    probe = "import socket,xmlrpc.client; socket.setdefaulttimeout(3); p=xmlrpc.client.ServerProxy(%r); assert p.getPid('/nuc_connection_check')[0]==1; print('NUC can reach workstation ROS core')" % uri(cfg, "real")
+    ssh(cfg, shlex.join(["python3", "-c", probe]))
+    tracking = ssh(cfg, "chronyc -n tracking", capture=True).stdout
+    print(tracking, end="")
+    if cfg["PC_IP"] not in tracking or "Normal" not in tracking:
+        raise UserError("NUC clock is not synchronized to PC_IP. Follow docs/NEW_MACHINE.md before startup.")
+    container = cfg["NUC_CONTAINER"]
+    # Preserve the working vendor autodetection and hand-only hardware launch.
+    inner = ("set -e; source %s; unset ROS_HOSTNAME; export ROS_IP=%s ROS_MASTER_URI=%s; "
+             "/bin/update_hand_config.sh; exec sr_hand_autodetect -r roslaunch "
+             "sr_robot_launch sr_hardware_control_loop.launch arm:=false pwm_control:=true "
+             "hand_ctrl:=true robot_model:=ur10e arm_payload_mass:=2.7 initial_z:=0.0 initial_y:=0.0") % (
+                 shlex.quote(SHADOW_SETUP), shlex.quote(cfg["NUC_IP"]), shlex.quote(uri(cfg, "real")))
+    remote = shlex.join(["docker", "start", container]) + " && " + shlex.join([
+        "docker", "exec", "-it" if sys.stdin.isatty() else "-i", "--user", "user", container, "bash", "-lc", inner])
+    print("Starting real hand controllers; keep the hand clear.", flush=True)
+    ssh(cfg, remote, terminal=True)
+
+
+def shutdown_real(cfg):
+    master(cfg, "real")
+    print("Keep the hand clear during shutdown calibration. Leave the other session terminals open.", flush=True)
+    calibration = ("if rosparam get /diagnostic_aggregator/load_diagnostic_analyzer/hand_serials_list; "
+                   "then exec roslaunch sr_utilities calibrate_hand_finder.launch node_shutdown:=true node_timeout:=10; "
+                   "else echo 'Hand diagnostic parameter absent; skipping calibration as in the original launcher.'; fi")
+    ros_command(cfg, "real", ["bash", "-c", calibration])
+    try:
+        ros_command(cfg, "real", ["rosnode", "kill", "--all"])
+    except subprocess.CalledProcessError:
+        print("Some ROS nodes did not respond; stopping containers next.", file=sys.stderr)
+    ssh(cfg, shlex.join(["docker", "stop", "--time", "30", cfg["NUC_CONTAINER"]]))
+    compose(cfg, "stop", "--timeout", "30", "ur5", "workstation")
+    print("Session stopped. The laptop, NUC and UR control box remain powered on.")
+
+
+def mode_command(cfg, mode, command, extra):
+    service = "sim" if mode == "sim" else "workstation"
+    if command == "up":
+        running = set(compose(cfg, "ps", "--status", "running", "--services", capture=True).stdout.split())
+        conflicting = {"workstation", "ur5"} if mode == "sim" else {"sim"}
+        if running & conflicting:
+            raise UserError("The other mode is running. Shut it down before switching modes.")
+        compose(cfg, "up", "-d", *( ["sim"] if mode == "sim" else ["workstation", "ur5"]))
+        return
+    if command == "shutdown":
+        if mode == "real":
+            shutdown_real(cfg)
+        else:
+            compose(cfg, "stop", "--timeout", "30", "sim")
+        return
+    if command == "status":
+        compose(cfg, "ps", "--all")
+        ros_command(cfg, mode, ["python3", "/project/app/status.py"])
+        return
+    if command == "logs":
+        ros_command(cfg, mode, ["bash", "-c", "tail -n 100 /home/user/.ros/log/latest/rosout.log"])
+        return
+    if command == "shell":
+        ros_command(cfg, mode, ["bash"])
+        return
+    if mode == "sim" and command == "start":
+        ensure_no_master(cfg, mode)
+        ros_command(cfg, mode, ["roslaunch", "--port", cfg["ROS_PORT"], "/project/launch/simulation.launch", *extra])
+        return
+    if mode == "real" and command == "core":
+        ensure_no_master(cfg, mode)
+        ros_command(cfg, mode, ["roscore", "-p", cfg["ROS_PORT"]])
+        return
+    if mode == "real" and command == "nuc":
+        start_nuc(cfg)
+        return
+    master(cfg, mode)
+    if mode == "sim" and command == "plan":
+        ros_command(cfg, mode, ["python3", "/project/app/plan.py", *extra])
+    elif mode == "real" and command == "ur5":
+        ros_command(cfg, mode, ["roslaunch", "/project/launch/ur5_driver.launch",
+                    "robot_ip:=" + cfg["UR5_IP"], "reverse_ip:=" + cfg["UR5_REVERSE_IP"], *extra], service="ur5")
+    elif mode == "real" and command == "adapter":
+        ros_command(cfg, mode, ["python3", "/project/app/ur5_adapter.py"])
+    elif mode == "real" and command == "moveit":
+        ros_command(cfg, mode, ["roslaunch", "/project/launch/real.launch", *extra])
+    elif command == "obstacles":
+        ros_command(cfg, mode, ["python3", "/project/app/add_cell_obstacles.py"])
+    elif command in ("check", "replay", "run"):
+        flag = {"check": "--check", "replay": "--step", "run": "--run"}[command]
+        ros_command(cfg, mode, ["python3", "/project/app/replay.py", flag, *extra])
+    else:
+        raise UserError("Unknown %s command: %s. Run ./robotctl --help." % (mode, command))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, epilog=(
+        "Simulation: sim up/start/plan/check/replay/run/shutdown. "
+        "Hardware: real up/core/nuc/ur5/adapter/moveit/obstacles/check/replay/run/status/shutdown. "
+        "Both modes also support shell and logs."))
+    parser.add_argument("mode", choices=("init", "gui", "sim", "real", "build", "export-images", "import-images", "verify-images"))
+    parser.add_argument("command", nargs="?")
+    parser.add_argument("extra", nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+    if args.mode == "init":
+        initialize()
+        return
+    if not (ROOT / ".env").exists():
+        raise UserError("Run ./robotctl init first, then review .env.")
+    cfg = configuration()
+    if args.mode == "gui":
+        run(["xhost", "+si:localuser:" + getpass.getuser()])
+    elif args.mode == "build":
+        compose(cfg, "build", "ur5")
+    elif args.mode == "export-images":
+        if not args.command:
+            raise UserError("Usage: ./robotctl export-images /path/shlite_complete-images.tar")
+        output = Path(args.command).expanduser().resolve()
+        if output.exists():
+            raise UserError("Output already exists: %s" % output)
+        run(["docker", "image", "save", "-o", output, cfg["SHADOW_IMAGE"], cfg["UR5_IMAGE"]])
+        print("Saved both workstation images to", output)
+    elif args.mode == "import-images":
+        if not args.command:
+            raise UserError("Usage: ./robotctl import-images /path/shlite_complete-images.tar")
+        run(["docker", "image", "load", "-i", Path(args.command).expanduser()])
+    elif args.mode == "verify-images":
+        lock = json.loads((ROOT / "images.lock.json").read_text())
+        for key in ("SHADOW_IMAGE", "UR5_IMAGE"):
+            current = run(["docker", "image", "inspect", cfg[key], "--format", "{{.Id}}"], text=True, capture_output=True).stdout.strip()
+            expected = lock[key]["id"]
+            print(cfg[key], "matches tested image" if current == expected else "differs from tested image")
+            if current != expected:
+                raise UserError("Use the exported image archive to reproduce the tested environment exactly.")
+    else:
+        if not args.command:
+            raise UserError("Specify a command; run ./robotctl --help.")
+        mode_command(cfg, args.mode, args.command, args.extra)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (UserError, subprocess.CalledProcessError, FileNotFoundError) as exc:
+        print("ERROR:", exc, file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        sys.exit(130)

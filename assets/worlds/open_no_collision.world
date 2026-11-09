@@ -1,0 +1,72 @@
+<?xml version="1.0" ?>
+
+<sdf version="1.4">
+  <world name="default">
+
+    <!-- Light -->
+    <light type="directional" name="light">
+      <pose>0 -4 2.5 1.0 0 0</pose>
+      <diffuse>1 1 1 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>20</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>0 0 -1</direction>
+      <cast_shadows>true</cast_shadows>
+    </light>
+
+    <!-- Physics -->
+    <physics type="ode">
+      <gravity>0 0 -9.81</gravity>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <ode>
+        <solver>
+          <type>quick</type>
+          <iters>100</iters>
+          <precon_iters>0</precon_iters>
+          <sor>1.000000</sor>
+        </solver>
+        <constraints>
+          <cfm>0.000000</cfm>
+          <erp>0.200000</erp>
+          <contact_max_correcting_vel>0.000000</contact_max_correcting_vel>
+          <contact_surface_layer>0.00000</contact_surface_layer>
+        </constraints>
+      </ode>
+    </physics>
+
+    <!-- Ground plane -->
+    <include>
+      <!-- Direct file URI avoids GAZEBO_MODEL_PATH problems -->
+      <name>ground_plane_user</name>
+      <uri>model://ground_plane_user</uri>
+
+      <pose>0.14 0 -0.001 0 0 0</pose>
+    </include>
+
+
+    <!-- Rectangular object -->
+    <include>
+      <!-- Direct file URI avoids GAZEBO_MODEL_PATH problems -->
+      <name>rect_object</name>
+      <uri>model://rect_object_no_col</uri>
+
+      <!-- z = half object height: 0.08991808 / 2 = 0.04495904 -->
+      <pose>0.41 0 0.0675 0 0 0</pose>
+    </include>
+
+    <!-- GUI camera -->
+    <gui fullscreen="0">
+      <camera name="user_camera">
+        <pose>1.2 1.2 0.5 0 0.2861 -2.3562</pose>
+        <view_controller>orbit</view_controller>
+        <projection_type>perspective</projection_type>
+      </camera>
+    </gui>
+
+  </world>
+</sdf>

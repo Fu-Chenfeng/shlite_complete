@@ -1,0 +1,18 @@
+{
+  "SHADOW_IMAGE": {
+    "reference": "public.ecr.aws/shadowrobot/dexterous-hand:noetic-release",
+    "id": "sha256:f31d7627f9fe062b4f217870102dbb1ab522da3ef2d7284bfe260bb1c33a749b",
+    "repo_digests": [
+      "public.ecr.aws/shadowrobot/dexterous-hand@sha256:3c0bff21778fbf96cd6b7c96507744244af1b41560afc385754bf5875b1c3539"
+    ],
+    "architecture": "amd64",
+    "created": "2024-05-03T16:06:43.436803028Z"
+  },
+  "UR5_IMAGE": {
+    "reference": "shlite-complete-ur5:noetic",
+    "id": "sha256:55578293629fa5367a82a6f924ae40a8ba612019be3c5d6acff3ace75203d437",
+    "repo_digests": [],
+    "architecture": "amd64",
+    "created": "2026-06-04T13:16:27.946007378+09:00"
+  }
+}

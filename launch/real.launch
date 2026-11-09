@@ -1,0 +1,41 @@
+<launch>
+  <arg name="hand_type" default="hand_g"/>
+  <arg name="hand_version" default="G1M5"/>
+  <arg name="fingers" default="th,ff,mf,rf"/>
+  <arg name="gui" default="true"/>
+  <arg name="initial_z" default="0.012"/>
+  <arg name="robot_config" default="$(find sr_multi_moveit_config)/config/robot_configs/right_sh_ur5.yaml"/>
+
+  <param name="robot_config_file" value="$(arg robot_config)"/>
+  <rosparam command="load" file="$(arg robot_config)"/>
+  <!-- sim=true here selects xacro generation only. This include launches no
+       simulation or hardware controller and uses the same default UR5 geometry
+       as this project's saved trajectories. The NUC hardware is already running. -->
+  <include file="$(find sr_robot_launch)/launch/load_robot_description.launch">
+    <arg name="sim" value="true"/>
+    <arg name="side" value="right"/>
+    <arg name="arm" value="true"/>
+    <arg name="hand" value="true"/>
+    <arg name="robot_model" value="ur5"/>
+    <arg name="hand_type" value="$(arg hand_type)"/>
+    <arg name="hand_version" value="$(arg hand_version)"/>
+    <arg name="fingers" value="$(arg fingers)"/>
+    <arg name="tip_sensors" value="th=pst,ff=pst,mf=pst,rf=pst"/>
+    <arg name="mid_sensors" value="none"/>
+    <arg name="prox_sensors" value="none"/>
+    <arg name="palm_sensor" value="none"/>
+    <arg name="initial_z" value="$(arg initial_z)"/>
+    <arg name="initial_y" value="0.0"/>
+    <arg name="initial_yaw" value="0.0"/>
+  </include>
+  <!-- Deliberately replace the NUC's hand-only publisher with a publisher of
+       the combined description. The hand hardware loop continues running. -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen"/>
+  <include file="$(find sr_robot_launch)/launch/sr_ur_arm_hand.launch">
+    <arg name="sim" value="false"/>
+    <arg name="external_control_loop" value="true"/>
+    <arg name="robot_model" value="ur5"/>
+    <arg name="gui" value="$(arg gui)"/>
+    <arg name="scene" value="false"/>
+  </include>
+</launch>
