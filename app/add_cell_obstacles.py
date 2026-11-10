@@ -1,33 +1,48 @@
 #!/usr/bin/env python3
+"""Load the configured environment into the real MoveIt planning scene."""
+import math
 
 import rospy
 import moveit_commander
 from geometry_msgs.msg import PoseStamped
 
-rospy.init_node("add_cell_obstacles")
-moveit_commander.roscpp_initialize([])
+from project_config import load_config
 
-scene = moveit_commander.PlanningSceneInterface()
-rospy.sleep(2.0)
 
-frame = "world"
-
-def add_box(name, size, xyz):
+def box_pose(values):
     pose = PoseStamped()
-    pose.header.frame_id = frame
-    pose.pose.position.x = xyz[0]
-    pose.pose.position.y = xyz[1]
-    pose.pose.position.z = xyz[2]
-    pose.pose.orientation.w = 1.0
-    scene.add_box(name, pose, size=size)
-    rospy.sleep(0.5)
+    pose.header.frame_id = 'world'
+    pose.pose.position.x, pose.pose.position.y, pose.pose.position.z = values[:3]
+    roll, pitch, yaw = (value / 2 for value in values[3:])
+    cr, sr = math.cos(roll), math.sin(roll)
+    cp, sp = math.cos(pitch), math.sin(pitch)
+    cy, sy = math.cos(yaw), math.sin(yaw)
+    q = pose.pose.orientation
+    q.x, q.y = sr * cp * cy - cr * sp * sy, cr * sp * cy + sr * cp * sy
+    q.z, q.w = cr * cp * sy - sr * sp * cy, cr * cp * cy + sr * sp * sy
+    return pose
 
-# Same as your Gazebo world/SDF:
-add_box("ground_plane_user", (0.9, 0.66, 0.002), (0.14, 0.0, -0.001))
-add_box("cell_plane_user",   (0.9, 0.66, 0.002), (0.14, 0.0, 0.951))
-add_box("back_plane_user",   (0.002, 0.66, 0.95), (-0.31, 0.0, 0.475))
-add_box("side_plane_right",  (0.9, 0.002, 0.95), (0.14, -0.33, 0.475))
-add_box("side_plane_left",   (0.9, 0.002, 0.95), (0.14, 0.33, 0.475))
 
-print("Added Gazebo-matching obstacles to MoveIt planning scene.")
-rospy.sleep(2.0)
+def main():
+    config = load_config()
+    rospy.init_node('add_cell_obstacles')
+    moveit_commander.roscpp_initialize([])
+    try:
+        scene = moveit_commander.PlanningSceneInterface(synchronous=True)
+        for definition in config['environment']:
+            if definition['enabled']:
+                scene.add_box(definition['name'], box_pose(definition['pose']), size=definition['size'])
+            else:
+                scene.remove_world_object(definition['name'])
+        obj = config['object']
+        if obj['enabled'] and obj['add_to_real_scene']:
+            scene.add_box('rect_object', box_pose(obj['pose']), size=obj['collision_size'])
+        else:
+            scene.remove_world_object('rect_object')
+        print('Loaded config.yaml environment into MoveIt planning scene.')
+    finally:
+        moveit_commander.roscpp_shutdown()
+
+
+if __name__ == '__main__':
+    main()

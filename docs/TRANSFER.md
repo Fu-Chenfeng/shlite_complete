@@ -2,7 +2,9 @@
 
 Use a Linux x86_64 PC with Docker Engine and Compose v2. GUI use needs an X11
 or XWayland session and the host `xhost` tool (`x11-xserver-utils` on Ubuntu).
-SSH, `ip`, NetworkManager and Chrony are host tools. This project does not install
+Host commands require `python3-yaml`. The desktop control panels also need
+`python3-gi`, `gir1.2-gtk-3.0`, `xdg-utils` and a terminal (`gnome-terminal` on
+Ubuntu). SSH, `ip`, NetworkManager and Chrony are host tools. This project does not install
 Docker, graphics drivers, network configuration or NUC credentials automatically.
 
 ## Recommended: transfer the exact working images
@@ -19,7 +21,7 @@ large. Use a drive/filesystem with enough space and support for files over 4 GB.
 Stop planning/saving before copying project data, then package the clean folder:
 
 ```bash
-tar --exclude=shlite_complete/.env --exclude='*/__pycache__' \
+tar --exclude=shlite_complete/.env --exclude=shlite_complete/.runtime --exclude='*/__pycache__' \
   -czf /path/on/USB/shlite_complete.tar.gz -C "$HOME" shlite_complete
 cd /path/on/USB
 sha256sum shlite_complete.tar.gz shlite_complete-images.tar > SHA256SUMS
@@ -40,9 +42,14 @@ cd ~/shlite_complete
 ```
 
 Extract onto the Linux filesystem rather than running directly from an NTFS USB.
-`.env` is generated for the new user's UID/GID and display. Review its addresses;
+`.env` is generated for the new user's UID/GID and display. Review the network
+addresses and SSH key path in `config.yaml`;
 authorize the new laptop using [NEW_MACHINE.md](NEW_MACHINE.md). SSH keys are not
 included in the project or Docker image archive.
+
+`Simulation.sh` and `Real-Control.sh` are included in the project root.
+They find the project from their own location and need no installation or path
+updates after transfer.
 
 ## Online alternative
 
@@ -64,8 +71,8 @@ part of this workstation image archive.
 ## What's included
 
 Project code, the UR5 Dockerfile and model overlay, simulation worlds/models,
-hand controller configuration, and all current `trajectories/arm` and
-`trajectories/hand` files travel together. No dependency on the old project
+hand controller configuration, and all timestamped runs in `trajectories/`
+(including each run's `arm/`, `hand/` and `run.json`) travel together. No dependency on the old project
 directories or the USB backup remains. The two runtime modes use automatically
 named Compose containers under project `shlite_complete`, avoiding the former
 `ur5-noetic` container-name conflict. Stop old ROS sessions before starting this

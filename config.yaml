@@ -1,0 +1,158 @@
+# Shared workstation settings. Distances: metres; angles: radians; color: RGBA.
+# Paths are relative to this project. Restart the session after scene/robot edits.
+# network: used for real control; exported environment variables override these.
+# simulation.world: open.world or cell.world (cell adds the surrounding walls).
+# object: runtime name stays rect_object to match the planner/replay workflow.
+# object.pose: [x, y, z, roll, pitch, yaw] in the world frame.
+# object.mesh: null uses a box; set assets/models/tofu_real.stl to use the mesh.
+# mesh_scale scales the mesh to metres. Collision geometry remains a box.
+# add_to_real_scene: optionally add the object's collision box to real MoveIt.
+# environment: simulation updates only models included by the selected world;
+# real control adds every enabled environment box to its planning scene.
+# planning: targets and tuning from the original planner; edits affect new plans.
+network:
+  pc_ip: 10.9.11.1
+  nuc_ip: 10.9.11.186
+  nuc_user: user
+  nuc_container: dexterous_hand
+  ssh_key: ~/.ssh/shadow_nuc
+  ur5_ip: 192.168.1.10
+  ur5_reverse_ip: ''
+  ros_port: 11311
+simulation:
+  world: assets/worlds/open.world
+  gui: true
+trajectories:
+  # Each planning run creates YYYY-MM-DD_HH-MM-SS/arm and /hand (Asia/Tokyo).
+  # Replay latest completed run, or enter a specific timestamp folder name.
+  replay_run: 2026-11-10_13-35-00
+robot:
+  initial_z: 0.012
+  initial_y: 0.0
+  home_joints:
+    ra_shoulder_pan_joint: -0.873
+    ra_shoulder_lift_joint: -2.094
+    ra_elbow_joint: 2.094
+    ra_wrist_1_joint: -0.873
+    ra_wrist_2_joint: -0.611
+    ra_wrist_3_joint: -3.142
+object:
+  enabled: true
+  model: assets/models/rect_object/model.sdf
+  pose: [0.41, 0, 0.0675, 0, 0, 0]
+  static: true
+  mass: 0.2
+  visual_size: [0.035, 0.09, 0.075]
+  collision_size: [0.031, 0.087, 0.072]
+  # false lets the hand pass through this object in Gazebo and MoveIt.
+  hand_collision: true
+  color: [0.8, 0.2, 0.2, 1.0]
+  mesh: null
+  mesh_scale: [1.0, 1.0, 1.0]
+  add_to_real_scene: false
+environment:
+- name: ground_plane_user
+  enabled: true
+  size: [0.9, 0.66, 0.002]
+  pose: [0.14, 0, -0.001, 0, 0, 0]
+- name: cell_plane_user
+  enabled: true
+  size: [0.9, 0.66, 0.002]
+  pose: [0.14, 0, 0.951, 0, 0, 0]
+- name: back_plane_user
+  enabled: true
+  size: [0.002, 0.66, 0.95]
+  pose: [-0.31, 0, 0.475, 0, 0, 0]
+- name: side_plane_right
+  enabled: true
+  size: [0.9, 0.002, 0.95]
+  pose: [0.14, -0.33, 0.475, 0, 0, 0]
+- name: side_plane_left
+  enabled: true
+  size: [0.9, 0.002, 0.95]
+  pose: [0.14, 0.33, 0.475, 0, 0, 0]
+planning:
+  arm_pose_stage2:
+    x: 0.560912011
+    y: 0.041459514
+    z: 0.276758128
+    qx: -0.06858597323858148
+    qy: 0.9148256430460816
+    qz: 0.02719998938689261
+    qw: 0.3970518450751649
+  arm_pose_stage4:
+    x: 0.560912011
+    y: 0.041459514
+    z: 0.276758128
+    qx: -0.06858597323858148
+    qy: 0.9148256430460816
+    qz: 0.02719998938689261
+    qw: 0.3970518450751649
+  arm_pose_stage5_prelift:
+    x: 0.26320091199999995
+    y: 0.041459514
+    z: 0.410871051
+    qx: -0.06773090371496682
+    qy: 0.36612136366582065
+    qz: -0.029264309827985665
+    qw: 0.9276374679365456
+  hand_joints_captured:
+    rh_FFJ1: 0.093444493509459
+    rh_FFJ2: 0.093444493509459
+    rh_FFJ3: 1.432007902592064
+    rh_FFJ4: 0.348716784548
+    rh_MFJ1: 0.01372251375
+    rh_MFJ2: 0.01372251375
+    rh_MFJ3: 1.567656304937532
+    rh_MFJ4: 0.0
+    rh_RFJ1: 0.0
+    rh_RFJ2: 0.0
+    rh_RFJ3: 1.567656304937532
+    rh_RFJ4: -0.348716784548
+    rh_THJ1: 0.338699416551993
+    rh_THJ2: 0.389480010701418
+    rh_THJ4: 1.22050874592
+    rh_THJ5: -0.238956313567
+  hand_joints_iterated:
+    rh_FFJ1: 0.7873341836350589
+    rh_FFJ2: 0.093444493509459
+    rh_FFJ3: 1.432007902592064
+    rh_FFJ4: 0.348716784548
+    rh_MFJ1: 0.828737374703355
+    rh_MFJ2: 0.01372251375
+    rh_MFJ3: 1.567656304937532
+    rh_MFJ4: 0.0
+    rh_RFJ1: 0.0
+    rh_RFJ2: 0.0
+    rh_RFJ3: 1.567656304937532
+    rh_RFJ4: -0.348716784548
+    rh_THJ1: 1.163699755315065
+    rh_THJ2: 0.389480010701418
+    rh_THJ4: 1.22050874592
+    rh_THJ5: -0.238956313567
+  hand_joint_deltas_iterated:
+    rh_FFJ1:
+      from: 0.093444493509459
+      to: 0.7873341836350589
+      delta: 0.6938896901255999
+      change: '+0.693889690126'
+    rh_MFJ1:
+      from: 0.01372251375
+      to: 0.828737374703355
+      delta: 0.815014860953355
+      change: '+0.815014860953'
+    rh_THJ1:
+      from: 0.338699416551993
+      to: 1.163699755315065
+      delta: 0.825000338763072
+      change: '+0.825000338763'
+  stage4_changed_angle_scale: 0.5
+  stage4_ignore_env: true
+  stage4_tol: 0.001
+  stage4_planning_time: 20.0
+  stage4_attempts: 5
+  stage5_z_lift: 0.05
+  stage5_eef_step: 0.005
+  stage5_min_fraction: 0.99
+  stage5_duration: 5.0
+  thumb_only: [rh_THJ2, rh_THJ4, rh_THJ5]

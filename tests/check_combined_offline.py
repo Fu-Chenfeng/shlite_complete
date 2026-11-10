@@ -18,6 +18,7 @@ os.environ["ROS_MASTER_URI"] = "http://127.0.0.1:11311"
 os.environ["ROS_IP"] = "127.0.0.1"
 os.environ.pop("ROS_HOSTNAME", None)
 root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(root / "app"))
 children = []
 logs = []
 
@@ -105,6 +106,47 @@ try:
     buffer = tf2_ros.Buffer()
     listener = tf2_ros.TransformListener(buffer)
     buffer.lookup_transform("world", "rh_palm", rospy.Time(0), rospy.Duration(10))
+    subprocess.run([sys.executable, str(root / "app/add_cell_obstacles.py")], check=True, timeout=30)
+    from project_config import load_config
+    config = load_config()
+    scene = moveit_commander.PlanningSceneInterface(synchronous=True)
+    objects = scene.get_objects()
+    for definition in config["environment"]:
+        if definition["enabled"]:
+            obj = objects[definition["name"]]
+            assert list(obj.primitives[0].dimensions) == definition["size"], obj
+            # MoveIt versions store the global offset on either the object or primitive.
+            position = (obj.pose if hasattr(obj, 'pose') else obj.primitive_poses[0]).position
+            assert [position.x, position.y, position.z] == definition["pose"][:3], obj
+    print("Configured environment boxes loaded into combined MoveIt scene.", flush=True)
+    import copy
+    from sim_contacts import configure_hand_object_contacts
+    from moveit_msgs.srv import GetPlanningScene, GetPlanningSceneRequest
+    from moveit_msgs.msg import PlanningSceneComponents
+    request = GetPlanningSceneRequest()
+    request.components.components = PlanningSceneComponents.ALLOWED_COLLISION_MATRIX
+    get_scene = rospy.ServiceProxy('/get_planning_scene', GetPlanningScene)
+    robot = moveit_commander.RobotCommander()
+    for enabled in (False, True):
+        test_config = copy.deepcopy(config)
+        test_config['object']['hand_collision'] = enabled
+        restore = configure_hand_object_contacts(robot, test_config)
+        try:
+            matrix = get_scene(request).scene.allowed_collision_matrix
+            def allowed_pair(first, second):
+                if first in matrix.entry_names and second in matrix.entry_names:
+                    return matrix.entry_values[matrix.entry_names.index(first)].enabled[matrix.entry_names.index(second)]
+                # MoveIt omits entries identical to the default (checked/false).
+                defaults = dict(zip(matrix.default_entry_names, matrix.default_entry_values))
+                values = [defaults[name] for name in (first, second) if name in defaults]
+                return all(values) if values else False
+            for name in robot.get_link_names():
+                if name.startswith('rh_'):
+                    for object_name in ('rect_object', 'rect_object__link'):
+                        assert allowed_pair(object_name, name) == (not enabled), (object_name, name)
+        finally:
+            restore()
+    print('Hand-object MoveIt collision switch checked in both directions.', flush=True)
     print("Combined MoveIt started; right_arm and right_hand loaded; world-to-palm TF connected.", flush=True)
     subprocess.run([
         sys.executable, str(root / "app/replay.py"), "--check",

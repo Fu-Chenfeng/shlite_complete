@@ -4,6 +4,7 @@
   <arg name="fingers" default="th,ff,mf,rf"/>
   <arg name="gui" default="true"/>
   <arg name="initial_z" default="0.012"/>
+  <arg name="initial_y" default="0.0"/>
   <arg name="robot_config" default="$(find sr_multi_moveit_config)/config/robot_configs/right_sh_ur5.yaml"/>
 
   <param name="robot_config_file" value="$(arg robot_config)"/>
@@ -25,7 +26,7 @@
     <arg name="prox_sensors" value="none"/>
     <arg name="palm_sensor" value="none"/>
     <arg name="initial_z" value="$(arg initial_z)"/>
-    <arg name="initial_y" value="0.0"/>
+    <arg name="initial_y" value="$(arg initial_y)"/>
     <arg name="initial_yaw" value="0.0"/>
   </include>
   <!-- Deliberately replace the NUC's hand-only publisher with a publisher of
@@ -35,6 +36,8 @@
     <arg name="sim" value="false"/>
     <arg name="external_control_loop" value="true"/>
     <arg name="robot_model" value="ur5"/>
+    <arg name="initial_z" value="$(arg initial_z)"/>
+    <arg name="initial_y" value="$(arg initial_y)"/>
     <arg name="gui" value="$(arg gui)"/>
     <arg name="scene" value="false"/>
   </include>

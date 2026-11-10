@@ -10,6 +10,7 @@ import sys
 import time
 import tempfile
 import xmlrpc.client
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 os.environ.update(ROS_MASTER_URI="http://127.0.0.1:11311", ROS_IP="127.0.0.1",
@@ -43,12 +44,18 @@ try:
     from sensor_msgs.msg import JointState
 
     rospy.init_node("simulation_offline_check", disable_signals=True)
-    spawn(["roslaunch", str(ROOT / "launch/simulation.launch"), "gui:=false"], "sim-test-launch")
+    world_file = os.environ.get("CHECK_WORLD", str(ROOT / "assets/worlds/open.world"))
+    if ET.parse(world_file).find("world/plugin[@name='shlite_hand_object_collisions']") is not None:
+        subprocess.run(['bash', str(ROOT / 'docker/build-contact-plugin.sh')], check=True)
+    spawn(["roslaunch", str(ROOT / "launch/simulation.launch"), "gui:=false", "world:=" + world_file], "sim-test-launch")
     rospy.wait_for_service("/gazebo/get_world_properties", timeout=90)
     world = rospy.ServiceProxy("/gazebo/get_world_properties", GetWorldProperties)()
     assert world.success and "rect_object" in world.model_names, world
     rospy.wait_for_message("/joint_states", JointState, timeout=90)
     rospy.wait_for_service("/get_planning_scene", timeout=90)
+    subprocess.run([sys.executable, str(ROOT / 'app/sim_contacts.py')], check=True, timeout=30)
+    subprocess.run([sys.executable, str(ROOT / "app/wait_ready.py"), "sim", "--timeout", "20"],
+                   check=True, timeout=30)
     subprocess.run([sys.executable, str(ROOT / "app/replay.py"), "--check",
                     "--trajectory-root", str(ROOT / "trajectories")], check=True, timeout=30)
     assert rospy.get_param("/use_sim_time") is True
@@ -60,7 +67,18 @@ try:
     if os.environ.get("CHECK_PLANNER") == "1":
         with tempfile.TemporaryDirectory(prefix="shlite-plan-test-") as output:
             env = dict(os.environ, TRAJECTORY_ROOT=output)
-            subprocess.run([sys.executable, str(ROOT / "app/plan.py")], env=env, check=True, timeout=300)
+            try:
+                subprocess.run([sys.executable, str(ROOT / "app/plan.py")], env=env, check=True, timeout=300)
+            except subprocess.CalledProcessError:
+                from moveit_msgs.srv import GetPlanningScene, GetPlanningSceneRequest, GetStateValidity
+                from moveit_msgs.msg import PlanningSceneComponents
+                request = GetPlanningSceneRequest()
+                request.components.components = PlanningSceneComponents.ROBOT_STATE
+                state = rospy.ServiceProxy('/get_planning_scene', GetPlanningScene)(request).scene.robot_state
+                validity = rospy.ServiceProxy('/check_state_validity', GetStateValidity)(robot_state=state, group_name='right_arm')
+                print('Planner failure collision pairs:',
+                      [(c.contact_body_1, c.contact_body_2) for c in validity.contacts], flush=True)
+                raise
             subprocess.run([sys.executable, str(ROOT / "app/replay.py"), "--check",
                             "--trajectory-root", output], env=env, check=True, timeout=30)
             print("Planning, simulation execution and saving all stages passed; fresh files match shared replay.", flush=True)

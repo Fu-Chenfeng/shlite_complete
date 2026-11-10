@@ -5,8 +5,7 @@ import pickle
 import math
 
 import rospy
-
-ARM_TRAJ_DIR = os.path.join(os.environ.get("TRAJECTORY_ROOT", "/project/trajectories"), "arm")
+from trajectory_store import configured_run
 
 START_TOL_ARM = 0.02
 SETTLE_AFTER_START_MOVE = 0.5
@@ -48,7 +47,7 @@ def plan_traj(group):
 
 
 def load_traj(filename):
-    path = os.path.join(ARM_TRAJ_DIR, filename)
+    path = configured_run() / 'arm' / filename
     with open(path, "rb") as f:
         traj = pickle.load(f)
     return normalize_ur5_joint_names(traj)

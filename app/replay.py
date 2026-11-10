@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Run saved arm and hand stages using their original replay helpers."""
 import argparse
-import os
 import pickle
 import sys
 
@@ -10,9 +9,9 @@ import rospy
 
 import arm_replay
 import hand_replay
-from sim_contacts import allow_grasp_contacts
+from sim_contacts import configure_hand_object_contacts
+from trajectory_store import configured_run, resolve_run
 
-ROOT = os.environ.get("TRAJECTORY_ROOT", "/project/trajectories")
 SEQUENCE = [
     ("hand", "ZERO"),
     ("hand", hand_replay.HAND_FILES[0]),
@@ -32,8 +31,10 @@ def main():
     modes.add_argument("--run", action="store_true", help="execute the full sequence")
     modes.add_argument("--step", action="store_true", help="press Enter before each stage")
     modes.add_argument("--check", action="store_true", help="check files and groups without moving (default)")
-    parser.add_argument("--trajectory-root", default=ROOT, help="directory containing arm/ and hand/")
+    parser.add_argument("--trajectory-root", help="trajectory archive or a specific timestamped run directory")
     args = parser.parse_args(rospy.myargv()[1:])
+    run = resolve_run(args.trajectory_root) if args.trajectory_root else configured_run()
+    print('Using trajectory run: %s' % run, flush=True)
     moveit_commander.roscpp_initialize(sys.argv)
     rospy.init_node("arm_hand_replay", anonymous=True)
     robot = moveit_commander.RobotCommander()
@@ -61,7 +62,7 @@ def main():
         for backend, filename in SEQUENCE:
             if filename == "ZERO":
                 continue
-            with open(os.path.join(args.trajectory_root, backend, filename), "rb") as stream:
+            with open(run / backend / filename, "rb") as stream:
                 saved = pickle.load(stream)
             if filename == hand_replay.ITERATED_HAND_DELTA_FILE:
                 names = list(saved)
@@ -87,8 +88,7 @@ def main():
             print("  %s: %s" % (backend, filename), flush=True)
         if not (args.run or args.step):
             return
-        if os.environ.get("SESSION_MODE") == "sim":
-            restore_contacts = allow_grasp_contacts(robot)
+        restore_contacts = configure_hand_object_contacts(robot)
         for backend, filename in SEQUENCE:
             if rospy.is_shutdown():
                 raise RuntimeError("ROS shut down; sequence stopped")

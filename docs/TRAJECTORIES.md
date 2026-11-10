@@ -4,6 +4,33 @@ Host directory: `trajectories/`. Container directory: `/project/trajectories`.
 `TRAJECTORY_ROOT` is the same in both Compose modes. The shared replay program
 loads every required file and validates its joints before executing any stage.
 
+Each planning run creates a new folder using its start time in **Asia/Tokyo**:
+
+```text
+trajectories/
+  2026-11-10_13-35-00/
+    arm/
+    hand/
+    run.json
+  YYYY-MM-DD_HH-MM-SS/
+    arm/
+    hand/
+    run.json
+```
+
+The existing 13 files were moved unchanged into `2026-11-10_13-35-00/`.
+All stages of a new plan share one timestamp folder; another plan creates a new
+folder. If two plans start within the same second, a numeric suffix prevents
+overwriting. `run.json` records the start time, timezone and recording status.
+Runs become complete only after planning/execution finishes successfully.
+Failed/interrupted runs remain on disk, and default replay skips them.
+
+Both simulation and real replay select the newest completed run automatically.
+Choose an older run by setting `trajectories.replay_run` in `config.yaml` to its
+folder name. The replay log prints the selected folder before checking files.
+The optional `--trajectory-root` argument also accepts a specific run directory
+or an archive root. The file paths below are relative to the selected run.
+
 | Order | Group | File or operation |
 |---|---|---|
 | 0 | hand | All active hand joints to zero |
@@ -33,20 +60,24 @@ saved stage-4 deltas applied to the current angles. It does not reproduce the
 hand's original recorded timing. The first replay stage zeros all active hand
 joints, matching the working hardware UI's ZERO operation.
 
-The planner retains the previous inputs and planning behavior in `app/plan.py`,
+The planner retains the previous planning behavior in `app/plan.py`, with its
+inputs now in `config.yaml` under `planning` and `robot.home_joints`,
 including its separate `STAGE4_CHANGED_ANGLE_SCALE=0.5`. Therefore the initial
 plan-and-save run and subsequent replay can differ in that hand adjustment.
 Both **replay modes** use the same `0.3` setting and sequence. The planning command
-executes only in simulation because it uses Gazebo services and temporarily
-changes simulation collision handling. It is not a real-hardware planning runner.
+executes only in simulation. It can temporarily relax environment checking under
+`planning.stage4_ignore_env`, while respecting `object.hand_collision`.
+It is not a real-hardware planning runner.
 
-During simulated replay, contact between the robot and the grasp object
-`rect_object` is temporarily allowed in MoveIt so finger closure is plannable.
-The original collision matrix is restored afterward. Other scene objects and
-the real-hardware collision configuration are retained. The read-only `check`
-command does not apply this contact allowance.
+Planning and replay apply `object.hand_collision` to the `rh_` hand links and
+the grasp object `rect_object`. With `false`, MoveIt allows that pair; with
+`true`, it checks it. The original collision matrix is restored after the task.
+This switch leaves other robot/object pairs unchanged. The planner keeps the
+object present during Stage 5a rather than deleting its geometry. Gazebo's
+physical hand-object filter follows the same setting after simulation restart.
+The read-only `check` command does not change collision rules.
 
-To keep multiple runs, copy `trajectories/` before generating another. Do not
-replace files during replay. Load only trusted pickle files. Hand controller
+Older runs are preserved automatically. Do not replace files during replay.
+Load only trusted pickle files. Hand controller
 errors, failed arm goals and cancellation failures stop execution before the
 next stage; the physical robot stop controls remain available when needed.

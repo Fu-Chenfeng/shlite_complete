@@ -1,5 +1,6 @@
 .env
 .git
+.runtime
 **/__pycache__
 *.tar
 *.tar.gz

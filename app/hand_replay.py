@@ -3,8 +3,7 @@ import os
 import pickle
 
 import rospy
-
-HAND_TRAJ_DIR = os.path.join(os.environ.get("TRAJECTORY_ROOT", "/project/trajectories"), "hand")
+from trajectory_store import configured_run
 
 VEL = 0.6
 ACC = 0.3
@@ -31,7 +30,7 @@ def plan(group):
 
 
 def load_pickle(name, label):
-    path = os.path.join(HAND_TRAJ_DIR, name)
+    path = configured_run() / 'hand' / name
     with open(path, "rb") as f:
         data = pickle.load(f)
     rospy.loginfo("[hand-ui] Loaded %s %s", label, path)

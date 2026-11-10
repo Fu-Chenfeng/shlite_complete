@@ -1,13 +1,16 @@
 <launch>
   <arg name="world" default="/project/assets/worlds/open.world"/>
   <arg name="gui" default="true"/>
+  <arg name="initial_z" default="0.012"/>
+  <arg name="initial_y" default="0"/>
+  <arg name="home_angles" default="-J ra_shoulder_pan_joint -0.873 -J ra_shoulder_lift_joint -2.094 -J ra_elbow_joint 2.094 -J ra_wrist_1_joint -0.873 -J ra_wrist_2_joint -0.611 -J ra_wrist_3_joint -3.142"/>
   <include file="$(find sr_robot_launch)/launch/sr_ur_arm_hand.launch">
     <arg name="sim" value="true"/>
     <arg name="use_moveit" value="true"/>
     <arg name="world" value="$(arg world)"/>
     <arg name="scene" value="true"/>
-    <arg name="initial_z" value="0.012"/>
-    <arg name="initial_y" value="0"/>
+    <arg name="initial_z" value="$(arg initial_z)"/>
+    <arg name="initial_y" value="$(arg initial_y)"/>
     <arg name="gui" value="$(arg gui)"/>
     <arg name="side" value="right"/>
     <arg name="robot_model" value="ur5"/>
@@ -20,6 +23,6 @@
     <arg name="prox_sensors" value="none"/>
     <arg name="palm_sensor" value="none"/>
     <arg name="start_home" value="true"/>
-    <arg name="home_angles" value="-J ra_shoulder_pan_joint -0.873 -J ra_shoulder_lift_joint -2.094 -J ra_elbow_joint 2.094 -J ra_wrist_1_joint -0.873 -J ra_wrist_2_joint -0.611 -J ra_wrist_3_joint -3.142"/>
+    <arg name="home_angles" value="$(arg home_angles)"/>
   </include>
 </launch>

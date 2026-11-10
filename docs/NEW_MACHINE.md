@@ -115,14 +115,16 @@ cd ~/shlite_complete
 ./robotctl init
 ```
 
-Edit `.env`: set `PC_IP=10.9.11.1`, the discovered `NUC_IP`, `SSH_KEY`, `UR5_IP`,
-the host UID/GID and desktop display. Values are plain text, without shell quotes.
-All terminals automatically read this file. No private key belongs in the project.
+Edit `config.yaml` under `network`: set `pc_ip: 10.9.11.1`, the discovered
+`nuc_ip`, `ssh_key` and `ur5_ip`. Review the host UID/GID and desktop display in
+`.env`. All commands and desktop controls automatically read these files. No
+private key belongs in the project. Network values left in an older `.env` are
+superseded by `config.yaml`.
 
 Use a separate Ethernet connection to the UR5. The working setup uses laptop
 `192.168.1.20/24` and robot `192.168.1.10`; that connection needs no default
 gateway. Keep the pendant's External Control program pointed at the laptop's
-UR-network address. Set `UR5_REVERSE_IP=192.168.1.20` if automatic detection is
+UR-network address. Set `network.ur5_reverse_ip: 192.168.1.20` in `config.yaml` if automatic detection is
 unsuitable. Check both routes:
 
 ```bash
