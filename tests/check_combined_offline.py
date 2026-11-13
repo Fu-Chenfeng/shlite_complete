@@ -10,6 +10,7 @@ import signal
 import subprocess
 import sys
 import threading
+import tempfile
 import time
 import xml.etree.ElementTree as ET
 import xmlrpc.client
@@ -148,10 +149,21 @@ try:
             restore()
     print('Hand-object MoveIt collision switch checked in both directions.', flush=True)
     print("Combined MoveIt started; right_arm and right_hand loaded; world-to-palm TF connected.", flush=True)
-    subprocess.run([
-        sys.executable, str(root / "app/replay.py"), "--check",
-        "--trajectory-root", str(root / "trajectories"),
-    ], check=True, timeout=30)
+    from recording_fixture import make_recording
+    with tempfile.TemporaryDirectory(prefix='shlite-five-stage-check-') as archive:
+        replay_groups = {name: moveit_commander.MoveGroupCommander('right_' + name) for name in ('arm', 'hand')}
+        recording = make_recording(archive, robot, replay_groups, config)
+        subprocess.run([
+            sys.executable, str(root / 'app/replay.py'), '--check',
+            '--trajectory-root', str(recording),
+        ], check=True, timeout=30)
+        from plan import hand_grasp_flange_pose, verify_lift_endpoint
+        try:
+            verify_lift_endpoint(replay_groups['arm'], robot,
+                                 hand_grasp_flange_pose(replay_groups['arm'], config['grasp']))
+            print('Configured lift endpoint is reachable.', flush=True)
+        except RuntimeError as exc:
+            print('Configured lift reachability report:', exc, flush=True)
     assert not unexpected_goals, "Read-only check attempted a motion"
     moveit_commander.roscpp_shutdown()
 except BaseException:

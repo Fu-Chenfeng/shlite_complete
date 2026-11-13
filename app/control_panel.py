@@ -4,6 +4,7 @@ import subprocess
 import threading
 
 from desktop_session import Cancelled, ROOT, Session
+from trajectory_store import replay_run_choices
 
 
 def main(mode='sim'):
@@ -35,6 +36,8 @@ def main(mode='sim'):
             self.session = Session(mode, self.log)
             self.busy = False
             self.stopping = False
+            self.resetting = False
+            self.operation_generation = 0
             self.failed_processes = set()
             self.buttons = []
             outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -42,7 +45,7 @@ def main(mode='sim'):
             title = Gtk.Label(xalign=0)
             title.set_markup('<big><b>UR5 + Shadow Hand Lite</b></big>')
             outer.pack_start(title, False, False, 0)
-            note = ('Start the simulation, then plan a new task or replay saved stages.' if mode == 'sim'
+            note = ('Five stages: approach → close → tighten → lift → home and open.' if mode == 'sim'
                     else 'Start hardware with the hand clear for calibration. Start External Control on the UR5 pendant when prompted.')
             label = Gtk.Label(label=note, xalign=0)
             label.set_line_wrap(True)
@@ -54,14 +57,30 @@ def main(mode='sim'):
             self.start_button.get_style_context().add_class('suggested-action')
             if mode == 'sim':
                 self.button('Plan, execute & save', lambda: self.session.terminal_task('plan'), grid, 1, 0,
-                            tooltip='Plans and executes in simulation, saving a new timestamped trajectory folder.')
-            self.button('Check saved task', lambda: self.session.run(mode, 'check'), grid, 0, 1)
-            self.button('Replay saved task…', lambda: self.session.terminal_task('replay'), grid, 1, 1,
-                        tooltip='Opens a terminal. Press Enter before each stage; q quits between stages.')
+                            tooltip='Plans all five stages and saves a new run named after the GraspIt file (or timestamp for manual mode).')
+                self.reset_button = Gtk.Button(label='Reset simulation')
+                self.reset_button.connect('clicked', self.reset)
+                self.reset_button.set_tooltip_text('Cancel the current task and restart simulation at its configured starting state.')
+                grid.attach(self.reset_button, 0, 2, 1, 1)
+            self.check_button = self.button('Check saved task', lambda: self.saved_task('check'), grid, 0, 1, background=False)
+            self.replay_button = self.button('Replay five-stage task…', lambda: self.saved_task('replay'), grid, 1, 1,
+                        tooltip='Opens a terminal. Press Enter before each stage; q quits between stages.', background=False)
             self.button('Status', lambda: self.session.run(mode, 'status'), grid, 2, 1, needs_ready=False)
             edit = Gtk.Button(label='Edit config.yaml')
             edit.connect('clicked', lambda _: subprocess.Popen(['xdg-open', str(ROOT / 'config.yaml')]))
             grid.attach(edit, 2, 0, 1, 1)
+            saved = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            saved.pack_start(Gtk.Label(label='Saved trajectories:'), False, False, 0)
+            self.replay_choice = Gtk.ComboBoxText()
+            self.replay_choice.set_hexpand(True)
+            self.replay_choice.connect('changed', lambda _: self.refresh())
+            self.run_choices = None
+            self.available_runs = set()
+            saved.pack_start(self.replay_choice, True, True, 0)
+            refresh = Gtk.Button(label='Refresh list')
+            refresh.connect('clicked', lambda _: self.refresh_runs())
+            saved.pack_start(refresh, False, False, 0)
+            outer.pack_start(saved, False, False, 0)
             self.stop_button = Gtk.Button(label='Shut down simulation' if mode == 'sim' else 'Shut down hardware')
             self.stop_button.connect('clicked', self.stop)
             outer.pack_start(self.stop_button, False, False, 0)
@@ -80,24 +99,64 @@ def main(mode='sim'):
             self.connect('delete-event', self.close)
             self.connect('destroy', Gtk.main_quit)
             GLib.timeout_add_seconds(2, self.monitor)
+            self.refresh_runs()
             self.refresh()
 
-        def button(self, label, action, grid, col, row, needs_ready=True, tooltip=None):
+        def button(self, label, action, grid, col, row, needs_ready=True, tooltip=None, background=True):
             button = Gtk.Button(label=label)
             if tooltip:
                 button.set_tooltip_text(tooltip)
-            button.connect('clicked', lambda _: self.work(action))
+            button.connect('clicked', lambda _: self.work(action) if background else action())
             grid.attach(button, col, row, 1, 1)
             self.buttons.append((button, needs_ready))
             return button
 
         def refresh(self):
+            idle = not self.busy and not self.stopping and not self.resetting
             for button, needs_ready in self.buttons:
-                button.set_sensitive(not self.busy and (self.session.ready or not needs_ready))
-            self.start_button.set_sensitive(not self.busy and not self.session.active)
-            self.stop_button.set_sensitive(self.session.active and not self.stopping and not self.session.task_active)
-            self.stop_button.set_tooltip_text('Finish or quit the task and close its terminal before shutdown.'
+                button.set_sensitive(idle and (self.session.ready or not needs_ready))
+            self.start_button.set_sensitive(idle and not self.session.active)
+            if mode == 'sim':
+                self.reset_button.set_sensitive(not self.stopping and not self.resetting)
+            if hasattr(self, 'replay_choice'):
+                selection = self.replay_choice.get_active_id()
+                playable = bool(self.available_runs) if selection == 'latest' else selection in self.available_runs
+                for button in (self.check_button, self.replay_button):
+                    button.set_sensitive(idle and self.session.ready and playable)
+                self.replay_choice.set_sensitive(idle)
+            self.stop_button.set_sensitive(not self.stopping if mode == 'sim' else
+                                           self.session.active and not self.stopping and not self.session.task_active)
+            self.stop_button.set_tooltip_text('Stops simulation even during startup or an open task terminal.'
+                                             if mode == 'sim' else
+                                             'Finish or quit the task and close its terminal before shutdown.'
                                              if self.session.task_active else None)
+
+        def refresh_runs(self):
+            choices = replay_run_choices(ROOT / 'trajectories')
+            if choices == self.run_choices:
+                return
+            selection = self.replay_choice.get_active_id()
+            if selection is None:
+                # Read only this preference; malformed unrelated config must not
+                # prevent the panel's shutdown/reset controls from opening.
+                try:
+                    import yaml
+                    selection = yaml.safe_load((ROOT / 'config.yaml').read_text()).get('trajectories', {}).get('replay_run', 'latest')
+                except (OSError, ValueError, AttributeError, yaml.YAMLError):
+                    selection = 'latest'
+            self.run_choices = choices
+            self.available_runs = {entry['name'] for entry in choices if entry['replayable']}
+            self.replay_choice.remove_all()
+            self.replay_choice.append('latest', 'Latest completed run' if self.available_runs else 'No completed compatible runs yet')
+            for entry in choices:
+                self.replay_choice.append(entry['name'], '%s — %s' % (entry['name'], entry['status']))
+            if not isinstance(selection, str) or not self.replay_choice.set_active_id(selection):
+                self.replay_choice.set_active_id('latest')
+            self.refresh()
+
+        def saved_task(self, command):
+            selection = self.replay_choice.get_active_id() or 'latest'
+            self.work(lambda: self.session.replay(command, selection))
 
         def log(self, message):
             GLib.idle_add(self.append_log, message)
@@ -111,9 +170,10 @@ def main(mode='sim'):
             return False
 
         def work(self, action):
-            if self.busy:
+            if self.busy or self.stopping or self.resetting:
                 return
             self.busy = True
+            generation = self.operation_generation
             self.status.set_text('Working… See progress below or in the task terminal.')
             self.refresh()
 
@@ -121,29 +181,70 @@ def main(mode='sim'):
                 message = None
                 try:
                     with self.session.lock:
+                        if generation != self.operation_generation:
+                            raise Cancelled('Queued task cancelled by reset or shutdown.')
+                        self.session.check_cancelled()
                         action()
                 except Cancelled as exc:
                     self.log(str(exc))
                 except Exception as exc:
                     message = str(exc)
                     self.log('ERROR: ' + message)
-                GLib.idle_add(self.finished, message)
+                GLib.idle_add(self.finished, message, generation)
 
             threading.Thread(target=run, daemon=True).start()
 
-        def finished(self, error):
+        def finished(self, error, generation):
+            if generation != self.operation_generation:
+                return False
             self.busy = False
-            if error:
+            if error and not self.stopping and not self.resetting:
                 self.status.set_text(error)
-            elif not self.stopping:
+            elif not self.stopping and not self.resetting:
                 self.status.set_text('Session ready.' if self.session.ready else 'Session stopped / ready to start.')
             self.refresh()
             return False
 
+        def reset(self, _):
+            if self.resetting or self.stopping:
+                return
+            self.resetting = True
+            self.operation_generation += 1
+            generation = self.operation_generation
+            self.session.request_reset()
+            self.status.set_text('Resetting simulation… Cancelling the current task and restoring the starting scene.')
+            self.refresh()
+
+            def restart():
+                error = None
+                try:
+                    with self.session.lock:
+                        if generation != self.operation_generation:
+                            raise Cancelled('Reset cancelled by shutdown.')
+                        self.session.reset()
+                except Exception as exc:
+                    error = str(exc)
+                    self.log('RESET: ' + error)
+                GLib.idle_add(self.reset_finished, error, generation)
+
+            threading.Thread(target=restart, daemon=True).start()
+
+        def reset_finished(self, error, generation):
+            if generation != self.operation_generation:
+                return False
+            self.resetting = False
+            self.busy = False
+            if not self.stopping:
+                self.status.set_text(error or 'Simulation reset and ready.')
+            self.refresh_runs()
+            self.refresh()
+            return False
+
         def stop(self, _):
-            if self.stopping or self.session.task_active:
+            if self.stopping or (mode == 'real' and self.session.task_active):
                 return
             self.stopping = True
+            self.operation_generation += 1
             self.session.cancel.set()
             self.status.set_text('Shutting down… Keep this panel open until shutdown finishes.')
             self.refresh()
@@ -162,14 +263,17 @@ def main(mode='sim'):
 
         def stopped(self, error):
             self.stopping = False
+            self.resetting = False
             self.busy = False
             self.status.set_text(error or 'Shutdown complete. You can close the panel.')
             self.refresh()
             return False
 
         def monitor(self):
+            if not self.busy and not self.resetting and not self.stopping:
+                self.refresh_runs()
             self.refresh()
-            if not self.busy and not self.stopping:
+            if not self.busy and not self.stopping and not self.resetting:
                 for label, process in self.session.children:
                     if process.poll() is not None and process.pid not in self.failed_processes:
                         self.failed_processes.add(process.pid)
@@ -179,7 +283,7 @@ def main(mode='sim'):
             return True
 
         def close(self, *_):
-            if self.session.active or self.busy or self.stopping:
+            if self.session.active or self.busy or self.stopping or self.resetting:
                 self.status.set_text('Use Shut down first, then close this panel. You can minimize it while working.')
                 return True
             return False

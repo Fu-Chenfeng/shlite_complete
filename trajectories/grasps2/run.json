@@ -1,0 +1,9 @@
+{
+  "created_at": "2026-11-12T13:00:49.797347+09:00",
+  "timezone": "Asia/Tokyo",
+  "status": "complete",
+  "source": "planned",
+  "task_version": 3,
+  "grasp_file": "grasps2.json",
+  "finished_at": "2026-11-12T13:02:34.688406+09:00"
+}

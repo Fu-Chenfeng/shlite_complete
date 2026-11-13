@@ -1,8 +1,9 @@
 """Apply the configured hand-object collision rule to MoveIt."""
 import copy
+from contextlib import contextmanager
 
 import rospy
-from moveit_msgs.msg import AllowedCollisionEntry, PlanningScene, PlanningSceneComponents
+from moveit_msgs.msg import AllowedCollisionEntry, AllowedCollisionMatrix, PlanningScene, PlanningSceneComponents
 from moveit_msgs.srv import GetPlanningScene, GetPlanningSceneRequest, ApplyPlanningScene, ApplyPlanningSceneRequest
 
 from project_config import load_config
@@ -79,6 +80,70 @@ def configure_hand_object_contacts(robot, config=None):
             apply(original)
 
     return restore
+
+
+@contextmanager
+def stage_one_contacts(robot, config=None):
+    """Temporarily require hand-object checking, restoring even on failure."""
+    config = copy.deepcopy(config if config is not None else load_config())
+    config['object']['hand_collision'] = True
+    restore = configure_hand_object_contacts(robot, config)
+    try:
+        yield
+    finally:
+        restore()
+
+
+def disable_replay_collision_checks(robot, protect_table=True):
+    """Allow replay contacts, retaining robot-table checking for real control."""
+    for service in ('/get_planning_scene', '/apply_planning_scene'):
+        rospy.wait_for_service(service, timeout=10)
+    get_scene = rospy.ServiceProxy('/get_planning_scene', GetPlanningScene)
+    apply_scene = rospy.ServiceProxy('/apply_planning_scene', ApplyPlanningScene)
+    request = GetPlanningSceneRequest()
+    request.components.components = (PlanningSceneComponents.ALLOWED_COLLISION_MATRIX |
+                                     PlanningSceneComponents.WORLD_OBJECT_NAMES |
+                                     PlanningSceneComponents.ROBOT_STATE_ATTACHED_OBJECTS)
+    scene = get_scene(request).scene
+    original = copy.deepcopy(scene.allowed_collision_matrix)
+    tables = [obj.id for obj in scene.world.collision_objects
+              if obj.id == 'ground_plane_user' or obj.id.startswith(('ground_plane_user__', 'ground_plane_user::'))]
+    if protect_table and not tables:
+        raise RuntimeError('Real replay requires the table (ground_plane_user) in the planning scene. '
+                           'Load the real-control scene before replay.')
+    names = sorted(set(robot.get_link_names()) | set(original.entry_names) |
+                   set(original.default_entry_names) |
+                   {obj.id for obj in scene.world.collision_objects} |
+                   {obj.object.id for obj in scene.robot_state.attached_collision_objects})
+    allowed = AllowedCollisionMatrix(
+        entry_names=names,
+        entry_values=[AllowedCollisionEntry(enabled=[True] * len(names)) for _ in names],
+        default_entry_names=names, default_entry_values=[True] * len(names))
+    if protect_table:
+        for table in tables:
+            allowed = contact_matrix(allowed, names, table, allowed=False)
+            allowed.default_entry_values[allowed.default_entry_names.index(table)] = False
+            # Never restore a previously disabled robot-table rule on exit.
+            original = contact_matrix(original, robot.get_link_names() +
+                                      [obj.object.id for obj in scene.robot_state.attached_collision_objects],
+                                      table, allowed=False)
+            if table not in original.default_entry_names:
+                original.default_entry_names.append(table)
+                original.default_entry_values.append(False)
+            else:
+                original.default_entry_values[original.default_entry_names.index(table)] = False
+
+    def apply(matrix):
+        diff = PlanningScene(is_diff=True)
+        diff.robot_state.is_diff = True
+        diff.allowed_collision_matrix = matrix
+        if not apply_scene(ApplyPlanningSceneRequest(scene=diff)).success:
+            raise RuntimeError('Could not update replay collision rules')
+
+    apply(allowed)
+    rospy.loginfo('Replay collision checking: %s',
+                  'robot-table enabled; other pairs disabled' if protect_table else 'disabled (simulation)')
+    return lambda: apply(original)
 
 
 def main():

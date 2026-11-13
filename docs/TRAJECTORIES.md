@@ -1,83 +1,122 @@
-# Saved data and execution contract
+# Five-stage recordings and replay
 
-Host directory: `trajectories/`. Container directory: `/project/trajectories`.
-`TRAJECTORY_ROOT` is the same in both Compose modes. The shared replay program
-loads every required file and validates its joints before executing any stage.
-
-Each planning run creates a new folder using its start time in **Asia/Tokyo**:
+GraspIt planning runs use the input filename without its extension:
+`grasps.json` saves to `trajectories/grasps/`. Repeated saves use `grasps_001`,
+`grasps_002`, etc., preserving earlier runs. Manual planning uses
+`YYYY-MM-DD_HH-MM-SS` in Asia/Tokyo time. Both simulation and real control use
+the same recording. Latest selection and the dropdown use the recorded creation
+time, not alphabetical folder order.
 
 ```text
-trajectories/
-  2026-11-10_13-35-00/
-    arm/
-    hand/
-    run.json
-  YYYY-MM-DD_HH-MM-SS/
-    arm/
-    hand/
-    run.json
+trajectories/<grasp-name-or-timestamp>/
+  arm/
+    Stage_1_Approach_grasp.pkl
+    Stage_4_Lift.pkl
+    Stage_5_Return_home.pkl
+  hand/
+    Stage_1_Prepare_thumb_base.pkl
+    Stage_1_Prepare_thumb_base_target_joints.pkl
+    Stage_2_Close_fingers.pkl
+    Stage_2_Close_fingers_target_joints.pkl
+    Stage_3_Tighten_grasp.pkl
+    Stage_3_Tighten_grasp_target_joints.pkl
+    Stage_5_Open_hand.pkl
+    Stage_5_Open_hand_target_joints.pkl
+  task.json
+  run.json
 ```
 
-The existing 13 files were moved unchanged into `2026-11-10_13-35-00/`.
-All stages of a new plan share one timestamp folder; another plan creates a new
-folder. If two plans start within the same second, a numeric suffix prevents
-overwriting. `run.json` records the start time, timezone and recording status.
-Runs become complete only after planning/execution finishes successfully.
-Failed/interrupted runs remain on disk, and default replay skips them.
+`run.json` records the Tokyo start time, status and `task_version: 3`. A run
+becomes complete after every stage succeeds; failed/interrupted runs stay
+archived and are skipped by default replay. `task.json` records the five-stage
+sequence, grasp pose and hand targets, arm home and planning settings.
 
-Both simulation and real replay select the newest completed run automatically.
-Choose an older run by setting `trajectories.replay_run` in `config.yaml` to its
-folder name. The replay log prints the selected folder before checking files.
-The optional `--trajectory-root` argument also accepts a specific run directory
-or an archive root. The file paths below are relative to the selected run.
-
-| Order | Group | File or operation |
+| Stage | Behavior | Config input |
 |---|---|---|
-| 0 | hand | All active hand joints to zero |
-| 1 | hand | `hand/Stage_1_Hand_thumb-only.pkl` |
-| 2 | arm | `arm/Stage_2_Move_arm_to_captured_hand_pose.pkl` |
-| 3 | hand | `hand/Stage_3_Move_all_fingers.pkl` |
-| 4 | arm | `arm/Stage_4_Move_arm_with_palm_shift.pkl` |
-| 5 | hand | `hand/Stage_4_Iterated_hand_joint_angle_changes.pkl` |
-| 6 | arm | `arm/Stage_5a_Move_arm_to_additional_offset_pose.pkl` |
-| 7 | arm | `arm/Stage_5_Straight-line_Z_lift.pkl` |
-| 8 | arm | `arm/After_Stage_5_Planned_joint_move_to_home.pkl` |
+| 1 | Fully prepare thumb-base and finger J4 joints, partially close other joints, then approach | `grasp.joint_angles`, `planning.approach_hand_fraction`, palm pose |
+| 2 | Fingers close to the grasp angles | `grasp.joint_angles` |
+| 3 | Apply the second grasp configuration | `grasp.tightened_joint_angles` |
+| 4 | Palm lifts in world Z and optionally aligns captured gravity downward | `lift_distance`, `lift_align_gravity` |
+| 5 | Arm returns home, then hand goes to all zero | `robot.home_joints`; all active hand joints zero |
 
-The copied baseline trajectories are byte-for-byte copies of the working
-project. Planning uses the original label-to-filename conversion and Python
-pickle message format. It also saves `Stage_0_Open_hand.pkl`, hand target maps
-(`*_target_joints.pkl`) and the planned stage-4 hand trajectory, as before.
+There is one replay prompt per stage. Stage 1 fully prepares `rh_THJ5`, `rh_THJ4`,
+and each finger's J4, and moves other joints 60% from current angles toward their
+targets, then moves the arm.
+New recordings store `hand_preparation_mode: saved_target` and replay the complete
+saved preparation target; older runs retain their original live-angle preparation.
+Preparation failure stops before
+arm motion. Stage 5 contains two actions; failure of
+the home motion prevents the hand reset. A failed action stops the sequence.
+New runs record `thumb_preparation_joints` in `task.json`; older runs without
+that field keep their original `rh_THJ5`-only preparation.
 
-Arm replay keeps its `ra_` names in the shared files. Real hardware uses
-`app/ur5_adapter.py` to translate joint states, trajectory goals, tolerances and
-feedback between the combined model and the driver's unprefixed six-joint names.
-Saved timing is retained. Newly planned moves to a trajectory's start use
-velocity/acceleration scaling `0.05`; start tolerance is `0.02 rad`.
+The configured pose describes `rh_palm`, not the arm flange. Planning converts
+the world-frame palm pose through the model's fixed mounting transform. The
+lift keeps palm horizontal position and optionally interpolates its orientation
+to align the saved palm-frame gravity vector with world -Z. Alignment requires
+100% completion; fixed-orientation lifts use the configured path fraction.
+Lift timing follows `lift_velocity`/`lift_acceleration`, falling back to the
+arm scaling when omitted, and `lift_min_duration`. An unreachable configured path fails rather than saving a shorter lift.
 
-Hand replay plans to saved trajectory endpoints with velocity scaling `0.6`,
-acceleration scaling `0.3`, goal tolerances `0.01`, and a `0.3` multiplier for
-saved stage-4 deltas applied to the current angles. It does not reproduce the
-hand's original recorded timing. The first replay stage zeros all active hand
-joints, matching the working hardware UI's ZERO operation.
+Arm pickle files retain the standard ROS `RobotTrajectory` format and `ra_`
+joint names. Replay checks the start and, when needed, plans to that first point
+before executing with the saved timing on real hardware. Simulation replay uses
+`simulation.replay_speed: 3.0` by default: motion durations are divided by three,
+velocities multiplied by three, and accelerations multiplied by nine. This
+applies to saved arm paths, the planned move to their start, and replanned hand
+motions. Set it to `1.0` for normal speed. Saved files, planning speeds, Enter
+prompts and settling pauses are unchanged. The speed override requires both a
+simulation session and ROS simulation time; real replay stays at 1×.
+The UR5 adapter still translates joint
+names and goals to the existing driver for real control.
+Equivalent 2π arm-joint representations are aligned to the current feedback
+when the entire shifted path remains inside joint limits. This avoids an
+unnecessary full wrist revolution when returning to the same home pose.
 
-The planner retains the previous planning behavior in `app/plan.py`, with its
-inputs now in `config.yaml` under `planning` and `robot.home_joints`,
-including its separate `STAGE4_CHANGED_ANGLE_SCALE=0.5`. Therefore the initial
-plan-and-save run and subsequent replay can differ in that hand adjustment.
-Both **replay modes** use the same `0.3` setting and sequence. The planning command
-executes only in simulation. It can temporarily relax environment checking under
-`planning.stage4_ignore_env`, while respecting `object.hand_collision`.
-It is not a real-hardware planning runner.
+Hand stages replan to the **absolute joint maps saved with the run**. They do
+not apply scaled deltas to current angles. All targets are checked against the
+active group and joint limits before any stage executes. Preflight checks all
+seven trajectories and four hand target maps, including the final arm home and
+all-zero hand target. `--check` sends no motion or collision updates.
+Hand trajectory starts are synchronized from fresh `/joint_states` feedback;
+missing complete hand feedback stops execution. Existing start-state and
+controller tolerances remain in effect.
 
-Planning and replay apply `object.hand_collision` to the `rh_` hand links and
-the grasp object `rect_object`. With `false`, MoveIt allows that pair; with
-`true`, it checks it. The original collision matrix is restored after the task.
-This switch leaves other robot/object pairs unchanged. The planner keeps the
-object present during Stage 5a rather than deleting its geometry. Gazebo's
-physical hand-object filter follows the same setting after simulation restart.
-The read-only `check` command does not change collision rules.
+Simulation replay temporarily disables all MoveIt collision checking.
+Real replay keeps robot-table collision checking enabled in all stages,
+including the move to the first saved arm pose and replanned hand motions.
+Saved arm paths are checked against the table before execution, including
+samples between saved points. A missing table model blocks real replay.
+Other pairs remain disabled during replay. On completion, quitting or failure,
+previous scene rules are restored while retaining real robot-table checking.
+Planning retains its collision checks.
 
-Older runs are preserved automatically. Do not replace files during replay.
-Load only trusted pickle files. Hand controller
-errors, failed arm goals and cancellation failures stop execution before the
-next stage; the physical robot stop controls remain available when needed.
+`object.hand_collision` is applied during planning/replay and restored afterward.
+With `false`, it permits only hand-object contacts; other collision pairs stay
+checked. Gazebo's physical contact filter follows the same setting after a
+simulation restart. No stage deletes the object or relaxes all world collisions.
+
+`trajectories.replay_run: latest` selects the newest completed version-3 run.
+A timestamp can pin a compatible recording. `--trajectory-root` also accepts an
+archive root or a specific run directory. The selected folder and saved lift
+distance are printed before motion.
+
+The 13 original files in `2026-11-10_13-35-00/` are preserved unchanged as a legacy
+archive. They contain the old stage order and shorter lift. The five-stage
+replay rejects them with a request to generate a new run; it never reinterprets
+those old paths as the new task. Only load trusted pickle files.
+
+Version-2 runs lack the initial thumb preparation. They remain archived and
+are not replayed by the new sequence; generate a new plan to record all actions.
+
+The desktop **Saved trajectories** dropdown lists named and timestamped runs with their
+status. Choose a completed compatible run before Check or Replay; the panel
+passes that exact folder to replay without editing config.yaml. Failed and
+older-sequence runs remain visible for reference. Refresh list updates the
+choices immediately; the panel also refreshes automatically while idle.
+
+Gravity-aligning runs keep the same five stages and file format/version.
+`task.json` includes `lift_alignment` with the captured palm-frame gravity
+vector, target world direction and target palm quaternion. Stage 4's arm pickle
+contains the actual rotated trajectory. Replay uses those saved joint positions,
+not the current capture file. Existing recordings continue to replay unchanged.

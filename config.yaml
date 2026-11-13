@@ -1,15 +1,15 @@
 # Shared workstation settings. Distances: metres; angles: radians; color: RGBA.
 # Paths are relative to this project. Restart the session after scene/robot edits.
 # network: used for real control; exported environment variables override these.
-# simulation.world: open.world or cell.world (cell adds the surrounding walls).
+# simulation.world: shared simulation/real environment; cell.world adds walls.
 # object: runtime name stays rect_object to match the planner/replay workflow.
 # object.pose: [x, y, z, roll, pitch, yaw] in the world frame.
-# object.mesh: null uses a box; set assets/models/tofu_real.stl to use the mesh.
-# mesh_scale scales the mesh to metres. Collision geometry remains a box.
-# add_to_real_scene: optionally add the object's collision box to real MoveIt.
+# object.mesh uses the imported GraspIt mesh in millimetres; mesh_scale converts to metres.
+# collision_mesh: true uses the same mesh for Gazebo and optional real MoveIt collisions.
+# add_to_real_scene: optionally add the configured object to real MoveIt.
 # environment: simulation updates only models included by the selected world;
-# real control adds every enabled environment box to its planning scene.
-# planning: targets and tuning from the original planner; edits affect new plans.
+# real control uses the same world selection and removes unselected environment boxes.
+# grasp: world-frame palm pose and two hand targets. Joint angles are radians.
 network:
   pc_ip: 10.9.11.1
   nuc_ip: 10.9.11.186
@@ -22,13 +22,22 @@ network:
 simulation:
   world: assets/worlds/open.world
   gui: true
+  # Replay motion speed only; real control and planning keep their normal timing.
+  replay_speed: 3.0
+  # Smaller steps reduce closed-finger shaking during arm motion; reset to apply.
+  # Seconds: 0.00025 = 0.25 ms (more CPU); original setting was 0.001.
+  physics_step: 0.00025
 trajectories:
-  # Each planning run creates YYYY-MM-DD_HH-MM-SS/arm and /hand (Asia/Tokyo).
-  # Replay latest completed run, or enter a specific timestamp folder name.
-  replay_run: 2026-11-10_13-35-00
+  # GraspIt runs use the input filename stem (grasps, grasps_001, ...).
+  # Manual runs use YYYY-MM-DD_HH-MM-SS (Asia/Tokyo); each has arm/ and hand/.
+  # Replay a completed five-stage run; old recordings are kept but not reinterpreted.
+  replay_run: latest
 robot:
+  # UR5 mounting height above world Z=0 (table top), metres; restart to apply.
+  # Example: 0.032 raises the base by 2 cm from its current 0.012 m height.
   initial_z: 0.012
   initial_y: 0.0
+  # UR5 arm home joint angles, radians (simulation startup and stage 5).
   home_joints:
     ra_shoulder_pan_joint: -0.873
     ra_shoulder_lift_joint: -2.094
@@ -37,19 +46,24 @@ robot:
     ra_wrist_2_joint: -0.611
     ra_wrist_3_joint: -3.142
 object:
+  # World-Z offset applied only to the object and grasp target (metres).
+  grasp_z_offset: 0.015
   enabled: true
-  model: assets/models/rect_object/model.sdf
-  pose: [0.41, 0, 0.0675, 0, 0, 0]
+  model: assets/models/tofuprintfinal/model.sdf
+  pose: [0.41, 0.0, 0.034472, 1.5707963267948966, 0, 0]
   static: true
-  mass: 0.2
-  visual_size: [0.035, 0.09, 0.075]
-  collision_size: [0.031, 0.087, 0.072]
-  # false lets the hand pass through this object in Gazebo and MoveIt.
-  hand_collision: true
-  color: [0.8, 0.2, 0.2, 1.0]
-  mesh: null
-  mesh_scale: [1.0, 1.0, 1.0]
-  add_to_real_scene: false
+  mass: 0.5
+  visual_size: [0.0432183, 0.068001, 0.0899252]
+  collision_size: [0.0432183, 0.068001, 0.0899252]
+  # Planning Stage 1 always checks hand-object collisions; this controls planning stages 2–5.
+  # Replay disables other collision pairs; real replay always checks robot-table collisions.
+  # Gazebo physical contacts use this setting for the entire session.
+  hand_collision: false
+  color: [0.88, 0.88, 0.83, 1.0]
+  mesh: assets/models/tofuprintfinal/tofuprintfinal.stl
+  mesh_scale: [0.001, 0.001, 0.001]
+  add_to_real_scene: true
+  collision_mesh: true
 environment:
 - name: ground_plane_user
   enabled: true
@@ -71,88 +85,77 @@ environment:
   enabled: true
   size: [0.9, 0.002, 0.95]
   pose: [0.14, 0.33, 0.475, 0, 0, 0]
+grasp:
+  # graspit reads the JSON/TXT below; manual uses the pose and joint maps below.
+  mode: graspit
+  capture_file: grasps2.json             # Path relative to this project.
+  capture_index: 0                     # Zero-based index in the JSON grasps list.
+  capture_tighten_degrees: 7.0        # Stage 3 adds this to FF/MF/RF/TH J2 (before the tip).
+  # Extra tightening is capped at joint limits; planning reports any reduced increment.
+  frame: world
+  hand_link: rh_palm
+  translation: [0.34100592749911035, -0.010426620623213072, 0.09594225828885045]
+  orientation: [0.4026467431013437, 0.49784906485097036, 0.5312893123372578, 0.554755419525667]
+  # Stage 1 fully prepares THJ5, THJ4 and all finger J4 joints before arm motion.
+  # Other joints first move partway toward the grasp (planning.approach_hand_fraction).
+  # Captured 261110.txt posture; distal finger coupling is J1 = 0.8 * J2.
+  joint_angles:
+    rh_FFJ1: 0.15000000000000002
+    rh_FFJ2: 0.1875
+    rh_FFJ3: 1.570796
+    rh_FFJ4: 0.325817
+    rh_MFJ1: 0.219
+    rh_MFJ2: 0.27375
+    rh_MFJ3: 1.570796
+    rh_MFJ4: 0.0
+    rh_RFJ1: 0.1907744
+    rh_RFJ2: 0.238468
+    rh_RFJ3: 1.570796
+    rh_RFJ4: -0.3490658503988659
+    rh_THJ1: 1.089207
+    rh_THJ2: 0.6981317007977318
+    rh_THJ4: 1.22173
+    rh_THJ5: -0.96449
+  # Legacy manual-only stage-3 targets; ignored in graspit mode, which adds to J2 above.
+  tightened_joint_angles:
+    rh_FFJ1: 0.324532925199433
+    rh_FFJ2: 0.1875
+    rh_FFJ3: 1.570796
+    rh_FFJ4: 0.325817
+    rh_MFJ1: 0.39353292519943295
+    rh_MFJ2: 0.27375
+    rh_MFJ3: 1.570796
+    rh_MFJ4: 0.0
+    rh_RFJ1: 0.365307325199433
+    rh_RFJ2: 0.238468
+    rh_RFJ3: 1.570796
+    rh_RFJ4: -0.3490658503988659
+    rh_THJ1: 1.263739925199433
+    rh_THJ2: 0.6981317007977318
+    rh_THJ4: 1.22173
+    rh_THJ5: -0.96449
 planning:
-  arm_pose_stage2:
-    x: 0.560912011
-    y: 0.041459514
-    z: 0.276758128
-    qx: -0.06858597323858148
-    qy: 0.9148256430460816
-    qz: 0.02719998938689261
-    qw: 0.3970518450751649
-  arm_pose_stage4:
-    x: 0.560912011
-    y: 0.041459514
-    z: 0.276758128
-    qx: -0.06858597323858148
-    qy: 0.9148256430460816
-    qz: 0.02719998938689261
-    qw: 0.3970518450751649
-  arm_pose_stage5_prelift:
-    x: 0.26320091199999995
-    y: 0.041459514
-    z: 0.410871051
-    qx: -0.06773090371496682
-    qy: 0.36612136366582065
-    qz: -0.029264309827985665
-    qw: 0.9276374679365456
-  hand_joints_captured:
-    rh_FFJ1: 0.093444493509459
-    rh_FFJ2: 0.093444493509459
-    rh_FFJ3: 1.432007902592064
-    rh_FFJ4: 0.348716784548
-    rh_MFJ1: 0.01372251375
-    rh_MFJ2: 0.01372251375
-    rh_MFJ3: 1.567656304937532
-    rh_MFJ4: 0.0
-    rh_RFJ1: 0.0
-    rh_RFJ2: 0.0
-    rh_RFJ3: 1.567656304937532
-    rh_RFJ4: -0.348716784548
-    rh_THJ1: 0.338699416551993
-    rh_THJ2: 0.389480010701418
-    rh_THJ4: 1.22050874592
-    rh_THJ5: -0.238956313567
-  hand_joints_iterated:
-    rh_FFJ1: 0.7873341836350589
-    rh_FFJ2: 0.093444493509459
-    rh_FFJ3: 1.432007902592064
-    rh_FFJ4: 0.348716784548
-    rh_MFJ1: 0.828737374703355
-    rh_MFJ2: 0.01372251375
-    rh_MFJ3: 1.567656304937532
-    rh_MFJ4: 0.0
-    rh_RFJ1: 0.0
-    rh_RFJ2: 0.0
-    rh_RFJ3: 1.567656304937532
-    rh_RFJ4: -0.348716784548
-    rh_THJ1: 1.163699755315065
-    rh_THJ2: 0.389480010701418
-    rh_THJ4: 1.22050874592
-    rh_THJ5: -0.238956313567
-  hand_joint_deltas_iterated:
-    rh_FFJ1:
-      from: 0.093444493509459
-      to: 0.7873341836350589
-      delta: 0.6938896901255999
-      change: '+0.693889690126'
-    rh_MFJ1:
-      from: 0.01372251375
-      to: 0.828737374703355
-      delta: 0.815014860953355
-      change: '+0.815014860953'
-    rh_THJ1:
-      from: 0.338699416551993
-      to: 1.163699755315065
-      delta: 0.825000338763072
-      change: '+0.825000338763'
-  stage4_changed_angle_scale: 0.5
-  stage4_ignore_env: true
-  stage4_tol: 0.001
-  stage4_planning_time: 20.0
-  stage4_attempts: 5
-  stage5_z_lift: 0.05
-  stage5_eef_step: 0.005
-  stage5_min_fraction: 0.99
-  stage5_duration: 5.0
-  thumb_only: [rh_THJ2, rh_THJ4, rh_THJ5]
+  # Stage 1: adjust this fraction from 0.0 to 1.0 (0.6 = 60%, 0.8 = 80%).
+  # Applies to remaining joints; thumb base THJ5/THJ4 and finger J4 always reach 100%.
+  approach_hand_fraction: 0.55
+  # Search different arm configurations for the same palm position and orientation.
+  approach_ik_attempts: 64
+  approach_ik_timeout: 0.1  # Seconds per starting guess.
+  arm_velocity: 0.08
+  arm_acceleration: 0.08
+  hand_velocity: 0.4
+  hand_acceleration: 0.4
+  planning_time: 60.0
+  planning_attempts: 5
+  joint_tolerance: 0.01
+  # Lift along world +Z; unreachable endpoints are reported before moving.
+  lift_distance: 0.2
+  # Rotate during the lift so the captured gravity direction points world-down.
+  lift_align_gravity: true
+  lift_rotation_step_degrees: 2.0
+  lift_step: 0.005
+  lift_min_fraction: 1.0
+  # Lift-only speed scaling; approach and home keep arm_velocity/arm_acceleration.
+  lift_velocity: 0.10
+  lift_acceleration: 0.10
+  lift_min_duration: 16.0

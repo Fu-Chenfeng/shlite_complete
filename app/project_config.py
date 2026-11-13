@@ -63,10 +63,13 @@ def load_config(root=ROOT):
             raise ValueError('network.ros_port must be between 1 and 65535')
         project_path(sim['world'], root)
         boolean(sim['gui'], 'simulation.gui')
+        number(sim.get('replay_speed', 3.0), 'simulation.replay_speed', positive=True)
+        if 'physics_step' in sim:
+            number(sim['physics_step'], 'simulation.physics_step', positive=True)
         selection = config.get('trajectories', {}).get('replay_run', 'latest')
         from trajectory_store import RUN_NAME
         if not isinstance(selection, str) or (selection != 'latest' and not RUN_NAME.fullmatch(selection)):
-            raise ValueError('trajectories.replay_run must be latest or a timestamp folder name')
+            raise ValueError('trajectories.replay_run must be latest or a saved folder name')
         for key in ('initial_y', 'initial_z'):
             number(robot[key], 'robot.' + key)
         expected_joints = {'ra_%s_joint' % joint for joint in (
@@ -81,6 +84,7 @@ def load_config(root=ROOT):
         boolean(obj.get('hand_collision', True), 'object.hand_collision')
         number(obj['mass'], 'object.mass', positive=True)
         vector(obj['pose'], 6, 'object.pose')
+        number(obj.get('grasp_z_offset', 0.0), 'object.grasp_z_offset')
         for key in ('visual_size', 'collision_size', 'mesh_scale'):
             vector(obj[key], 3, 'object.' + key, positive=True)
         vector(obj['color'], 4, 'object.color')
@@ -88,6 +92,9 @@ def load_config(root=ROOT):
             raise ValueError('object.color values must be between 0 and 1')
         if obj['mesh'] is not None:
             project_path(obj['mesh'], root)
+        boolean(obj.get('collision_mesh', False), 'object.collision_mesh')
+        if obj.get('collision_mesh', False) and not obj['mesh']:
+            raise ValueError('object.collision_mesh requires object.mesh')
         names = set()
         for obstacle in config['environment']:
             name = obstacle['name']
@@ -98,44 +105,94 @@ def load_config(root=ROOT):
             boolean(obstacle['enabled'], name + '.enabled')
             vector(obstacle['size'], 3, name + '.size', positive=True)
             vector(obstacle['pose'], 6, name + '.pose')
-        validate_planning(config['planning'])
+        grasp = config['grasp']
+        mode = grasp.get('mode', 'manual')
+        if mode not in ('manual', 'graspit'):
+            raise ValueError('grasp.mode must be manual or graspit')
+        if mode == 'graspit':
+            from graspit_capture import resolve_capture
+            filename = grasp['capture_file']
+            if not isinstance(filename, str) or not filename.strip():
+                raise ValueError('grasp.capture_file must be a nonempty filename')
+            config['grasp'] = resolve_capture(grasp, obj['pose'], project_path(filename, root))
+        validate_planning(config['planning'], config['grasp'])
         object_model(config, root)
         return config
     except (KeyError, TypeError, AttributeError, OSError, yaml.YAMLError, ValueError, ET.ParseError) as exc:
         raise ValueError('Invalid config.yaml: %s' % exc) from exc
 
 
-def validate_planning(plan):
-    for key in ('arm_pose_stage2', 'arm_pose_stage4', 'arm_pose_stage5_prelift'):
-        pose = plan[key]
-        if set(pose) != {'x', 'y', 'z', 'qx', 'qy', 'qz', 'qw'}:
-            raise ValueError('planning.%s must contain x/y/z/qx/qy/qz/qw' % key)
-        for value in pose.values():
-            number(value, 'planning.' + key)
-        if abs(sum(pose[key] ** 2 for key in ('qx', 'qy', 'qz', 'qw')) - 1) > 0.01:
-            raise ValueError('Planning pose quaternion must have unit length')
-    for key in ('hand_joints_captured', 'hand_joints_iterated'):
-        if not plan[key]:
-            raise ValueError('planning.%s cannot be empty' % key)
-        for value in plan[key].values():
-            number(value, 'planning.' + key)
-    for delta in plan['hand_joint_deltas_iterated'].values():
-        for key in ('from', 'to', 'delta'):
-            number(delta[key], 'planning.hand_joint_deltas_iterated.' + key)
-    boolean(plan['stage4_ignore_env'], 'planning.stage4_ignore_env')
-    for key in ('stage4_changed_angle_scale', 'stage4_tol', 'stage4_planning_time',
-                'stage5_z_lift', 'stage5_eef_step', 'stage5_min_fraction', 'stage5_duration'):
+def validate_planning(plan, grasp):
+    if grasp['frame'] != 'world':
+        raise ValueError('grasp.frame must be world (translation and lift use world coordinates)')
+    if grasp['hand_link'] != 'rh_palm':
+        raise ValueError('grasp.hand_link must be rh_palm for this assembly')
+    vector(grasp['translation'], 3, 'grasp.translation')
+    vector(grasp['orientation'], 4, 'grasp.orientation')
+    if abs(sum(value ** 2 for value in grasp['orientation']) - 1) > 0.01:
+        raise ValueError('grasp.orientation must be a unit quaternion [x, y, z, w]')
+    for key in ('joint_angles', 'tightened_joint_angles'):
+        joints = grasp[key]
+        if not isinstance(joints, dict) or not joints:
+            raise ValueError('grasp.%s must be a nonempty joint map' % key)
+        for name, value in joints.items():
+            if not isinstance(name, str) or not name.startswith('rh_'):
+                raise ValueError('grasp.%s must contain rh_ hand joint names' % key)
+            number(value, 'grasp.%s.%s' % (key, name))
+    if set(grasp['joint_angles']) != set(grasp['tightened_joint_angles']):
+        raise ValueError('Both grasp joint maps must specify the same joints')
+    boolean(plan.get('lift_align_gravity', False), 'planning.lift_align_gravity')
+    if plan.get('lift_align_gravity', False):
+        if 'gravity_direction_palm' not in grasp:
+            raise ValueError('Gravity-aligned lift requires a JSON capture with gravity_direction_world '
+                             'or an explicit grasp.gravity_direction_palm vector')
+        vector(grasp['gravity_direction_palm'], 3, 'grasp.gravity_direction_palm')
+        from grasp_pose import unit
+        grasp['gravity_direction_palm'] = unit(grasp['gravity_direction_palm'], 'grasp.gravity_direction_palm')
+    number(plan.get('lift_rotation_step_degrees', 2.0), 'planning.lift_rotation_step_degrees', positive=True)
+    if plan.get('lift_rotation_step_degrees', 2.0) > 180:
+        raise ValueError('planning.lift_rotation_step_degrees must be <= 180')
+    for key in ('arm_velocity', 'arm_acceleration', 'hand_velocity', 'hand_acceleration'):
         number(plan[key], 'planning.' + key, positive=True)
-    if plan['stage5_min_fraction'] > 1:
-        raise ValueError('planning.stage5_min_fraction must be <= 1')
-    if type(plan['stage4_attempts']) is not int or plan['stage4_attempts'] < 1:
-        raise ValueError('planning.stage4_attempts must be a positive integer')
-    if not plan['thumb_only'] or not all(isinstance(j, str) for j in plan['thumb_only']):
-        raise ValueError('planning.thumb_only must list joint names')
+        if plan[key] > 1:
+            raise ValueError('planning.%s must be <= 1' % key)
+    for key in ('lift_velocity', 'lift_acceleration'):
+        if key in plan:
+            number(plan[key], 'planning.' + key, positive=True)
+            if plan[key] > 1:
+                raise ValueError('planning.%s must be <= 1' % key)
+    fraction = plan.get('approach_hand_fraction', 0.6)
+    number(fraction, 'planning.approach_hand_fraction')
+    if not 0 <= fraction <= 1:
+        raise ValueError('planning.approach_hand_fraction must be between 0 and 1')
+    for key in ('planning_time', 'joint_tolerance', 'lift_distance', 'lift_step',
+                'lift_min_fraction', 'lift_min_duration'):
+        number(plan[key], 'planning.' + key, positive=True)
+    if plan['lift_min_fraction'] > 1:
+        raise ValueError('planning.lift_min_fraction must be <= 1')
+    if type(plan['planning_attempts']) is not int or plan['planning_attempts'] < 1:
+        raise ValueError('planning.planning_attempts must be a positive integer')
+    attempts = plan.get('approach_ik_attempts', 64)
+    if type(attempts) is not int or not 1 <= attempts <= 1000:
+        raise ValueError('planning.approach_ik_attempts must be an integer between 1 and 1000')
+    number(plan.get('approach_ik_timeout', 0.1), 'planning.approach_ik_timeout', positive=True)
 
 
 def text_vector(values):
     return ' '.join(str(value) for value in values)
+
+
+def object_pose(config):
+    values = list(config['object']['pose'])
+    values[2] += config['object'].get('grasp_z_offset', 0.0)
+    return values
+
+
+def grasp_target(config):
+    """Offset only the task target; retain the original capture/YAML coordinates."""
+    grasp = copy.deepcopy(config['grasp'])
+    grasp['translation'][2] += config['object'].get('grasp_z_offset', 0.0)
+    return grasp
 
 
 def set_text(parent, path, text):
@@ -153,7 +210,15 @@ def object_model(config, root=ROOT):
     model.set('name', 'rect_object')
     set_text(model, 'static', str(obj['static']).lower())
     set_text(model, 'link/inertial/mass', obj['mass'])
-    set_text(model, 'link/collision/geometry/box/size', text_vector(obj['collision_size']))
+    collision = model.find('link/collision/geometry')
+    collision.clear()
+    if obj.get('collision_mesh', False):
+        mesh = ET.SubElement(collision, 'mesh')
+        path = project_path(obj['mesh'], root).relative_to(root)
+        ET.SubElement(mesh, 'uri').text = 'file:///project/' + path.as_posix()
+        ET.SubElement(mesh, 'scale').text = text_vector(obj['mesh_scale'])
+    else:
+        ET.SubElement(ET.SubElement(collision, 'box'), 'size').text = text_vector(obj['collision_size'])
     visual = model.find('link/visual')
     geometry = visual.find('geometry')
     geometry.clear()
@@ -169,12 +234,31 @@ def object_model(config, root=ROOT):
     return model
 
 
+def world_model_names(config, world=None, root=ROOT):
+    """Model names selected by the shared simulation/real environment world."""
+    scene = ET.parse(project_path(world or config['simulation']['world'], root)).getroot().find('world')
+    if scene is None:
+        raise ValueError('Simulation world must be an SDF containing a world')
+    return {element.findtext('name') if element.tag == 'include' else element.get('name')
+            for element in scene if element.tag in ('include', 'model')}
+
+
 def prepare_simulation(config, world=None, root=ROOT):
     """Inline configured models so vendor launch model paths cannot override them."""
     tree = ET.parse(project_path(world or config['simulation']['world'], root))
     scene = tree.getroot().find('world')
     if scene is None:
         raise ValueError('Simulation world must be an SDF containing a world')
+    if 'physics_step' in config['simulation']:
+        physics = scene.find('physics')
+        if physics is None:
+            physics = ET.SubElement(scene, 'physics', type='ode', name='configured_physics')
+        step = config['simulation']['physics_step']
+        for name, value in (('max_step_size', step), ('real_time_update_rate', 1.0 / step)):
+            field = physics.find(name)
+            if field is None:
+                field = ET.SubElement(physics, name)
+            field.text = str(value)
     if config['object']['enabled'] and not config['object'].get('hand_collision', True):
         plugin = ET.SubElement(scene, 'plugin', name='shlite_hand_object_collisions',
                                filename='/tmp/shlite-contact-filter/libhand_object_collisions.so')
@@ -182,12 +266,11 @@ def prepare_simulation(config, world=None, root=ROOT):
     settings = {item['name']: item for item in config['environment']}
     settings['rect_object'] = config['object']
     # Remove managed instances; reinsert only environment models present in this world.
-    present = set()
+    present = world_model_names(config, world, root)
     for element in list(scene):
         name = element.findtext('name') if element.tag == 'include' else element.get('name')
         if name in settings:
             scene.remove(element)
-            present.add(name)
     present.add('rect_object')
     obj_model = object_model(config, root)
     runtime = root / '.runtime'
@@ -207,7 +290,7 @@ def prepare_simulation(config, world=None, root=ROOT):
         pose = model.find('pose')
         if pose is None:
             pose = ET.SubElement(model, 'pose')
-        pose.text = text_vector(definition['pose'])
+        pose.text = text_vector(object_pose(config) if name == 'rect_object' else definition['pose'])
         scene.append(model)
     output = runtime / 'simulation.world'
     tree.write(output, encoding='utf-8', xml_declaration=True)

@@ -11,6 +11,86 @@ import sim_contacts
 
 
 class ContactTest(unittest.TestCase):
+    def test_replay_allows_self_world_and_attached_contacts_then_restores_exact_matrix(self):
+        from moveit_msgs.msg import PlanningScene, CollisionObject, AttachedCollisionObject
+        scene = PlanningScene()
+        scene.allowed_collision_matrix = AllowedCollisionMatrix(
+            entry_names=['rh_palm', 'floor'],
+            entry_values=[AllowedCollisionEntry(enabled=[False, False]) for _ in range(2)],
+            default_entry_names=['floor'], default_entry_values=[False])
+        scene.world.collision_objects = [CollisionObject(id='rect_object')]
+        scene.robot_state.attached_collision_objects = [AttachedCollisionObject(object=CollisionObject(id='held'))]
+        original = copy.deepcopy(scene.allowed_collision_matrix)
+        get_scene = Mock(return_value=Mock(scene=scene))
+        apply = Mock(return_value=Mock(success=True))
+        robot = Mock()
+        robot.get_link_names.return_value = ['rh_palm', 'ra_forearm_link']
+        with patch.object(sim_contacts.rospy, 'wait_for_service'), \
+                patch.object(sim_contacts.rospy, 'ServiceProxy', side_effect=[get_scene, apply]):
+            restore = sim_contacts.disable_replay_collision_checks(robot, protect_table=False)
+            allowed = apply.call_args.args[0].scene.allowed_collision_matrix
+            self.assertEqual(set(allowed.entry_names), {'rh_palm', 'floor', 'rect_object', 'held', 'ra_forearm_link'})
+            self.assertTrue(all(all(row.enabled) for row in allowed.entry_values))
+            self.assertTrue(all(allowed.default_entry_values))
+            self.assertEqual(scene.allowed_collision_matrix, original)
+            restore()
+            self.assertEqual(apply.call_args.args[0].scene.allowed_collision_matrix, original)
+
+    def test_real_replay_always_checks_table_and_retains_it_after_restore(self):
+        from moveit_msgs.msg import PlanningScene, CollisionObject, AttachedCollisionObject
+        for table in ('ground_plane_user', 'ground_plane_user__link'):
+            scene = PlanningScene()
+            scene.world.collision_objects = [CollisionObject(id=table), CollisionObject(id='rect_object')]
+            scene.robot_state.attached_collision_objects = [AttachedCollisionObject(object=CollisionObject(id='held'))]
+            # Even a stale all-allowed table rule must not survive the replay.
+            scene.allowed_collision_matrix = contact_matrix(AllowedCollisionMatrix(), ['rh_palm'], table, True)
+            get_scene = Mock(return_value=Mock(scene=scene))
+            apply = Mock(return_value=Mock(success=True))
+            robot = Mock()
+            robot.get_link_names.return_value = ['rh_palm', 'ra_forearm_link']
+            with patch.object(sim_contacts.rospy, 'wait_for_service'), \
+                    patch.object(sim_contacts.rospy, 'ServiceProxy', side_effect=[get_scene, apply]):
+                restore = sim_contacts.disable_replay_collision_checks(robot)
+                active = apply.call_args.args[0].scene.allowed_collision_matrix
+                obj, hand = [active.entry_names.index(n) for n in ('rect_object', 'rh_palm')]
+                self.assertTrue(active.entry_values[obj].enabled[hand])
+                restore()
+                restored = apply.call_args.args[0].scene.allowed_collision_matrix
+                for matrix in (active, restored):
+                    index = matrix.entry_names.index(table)
+                    for name in ('rh_palm', 'ra_forearm_link', 'held'):
+                        other = matrix.entry_names.index(name)
+                        self.assertFalse(matrix.entry_values[index].enabled[other])
+                        self.assertFalse(matrix.entry_values[other].enabled[index])
+                    self.assertFalse(matrix.default_entry_values[matrix.default_entry_names.index(table)])
+
+    def test_real_replay_rejects_missing_table_before_changing_rules(self):
+        from moveit_msgs.msg import PlanningScene
+        get_scene = Mock(return_value=Mock(scene=PlanningScene()))
+        apply = Mock()
+        with patch.object(sim_contacts.rospy, 'wait_for_service'), \
+                patch.object(sim_contacts.rospy, 'ServiceProxy', side_effect=[get_scene, apply]):
+            with self.assertRaisesRegex(RuntimeError, 'requires the table'):
+                sim_contacts.disable_replay_collision_checks(Mock())
+        apply.assert_not_called()
+
+    def test_stage_one_forces_checking_and_restores_after_success_or_failure(self):
+        config = {'object': {'enabled': True, 'hand_collision': False}}
+        for fail in (False, True):
+            restore = Mock()
+            with patch.object(sim_contacts, 'configure_hand_object_contacts', return_value=restore) as configure:
+                try:
+                    with sim_contacts.stage_one_contacts(Mock(), config):
+                        self.assertTrue(configure.call_args.args[1]['object']['hand_collision'])
+                        self.assertFalse(config['object']['hand_collision'])
+                        restore.assert_not_called()
+                        if fail:
+                            raise RuntimeError('stage failed')
+                except RuntimeError as exc:
+                    self.assertTrue(fail)
+                    self.assertEqual(str(exc), 'stage failed')
+                restore.assert_called_once_with()
+
     def test_only_grasp_object_contacts_are_added(self):
         original = AllowedCollisionMatrix(
             entry_names=["finger", "floor"],

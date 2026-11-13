@@ -1,27 +1,19 @@
 #!/usr/bin/env python3
 import os
 import pickle
+import time
 
 import rospy
+from sensor_msgs.msg import JointState
 from trajectory_store import configured_run
+from task_definition import TASK_VERSION, actions
+from joint_targets import target_for_group
+from trajectory_timing import scale_trajectory_speed
 
 VEL = 0.6
 ACC = 0.3
 SETTLE = 0.2
-ITERATED_HAND_DELTA_SCALE = 0.4
-
-HAND_FILES = [
-    "Stage_1_Hand_thumb-only.pkl",
-    "Stage_3_Move_all_fingers.pkl",
-    "Stage_4_Iterated_hand_joint_angle_changes.pkl",
-]
-
-ITERATED_HAND_DELTA_FILE = HAND_FILES[2]
-
-# Hand replay mode for non-iterated hand stages:
-#   "trajectory_goal" = load each saved hand trajectory .pkl and plan to its final joint point
-#   "target"          = load each *_target_joints.pkl and plan to that saved target map
-HAND_REPLAY_MODE = "trajectory_goal"
+HAND_FILES = [action['file'] for action in actions() if action['group'] == 'hand']
 
 
 def plan(group):
@@ -30,7 +22,7 @@ def plan(group):
 
 
 def load_pickle(name, label):
-    path = configured_run() / 'hand' / name
+    path = configured_run(task_version=TASK_VERSION) / 'hand' / name
     with open(path, "rb") as f:
         data = pickle.load(f)
     rospy.loginfo("[hand-ui] Loaded %s %s", label, path)
@@ -50,27 +42,9 @@ def load_hand_trajectory(name):
     return load_pickle(name, "hand trajectory")
 
 
-def load_hand_delta(name):
-    return load_pickle(name, "hand joint deltas")
-
-
-def clamp(robot, joint, value):
-    try:
-        mn, mx = robot.get_joint(joint).bounds()
-        return max(float(mn), min(float(mx), float(value)))
-    except Exception:
-        return float(value)
-
-
 def make_target_vector(group, robot, target_map):
-    active = group.get_active_joints()
-    current = group.get_current_joint_values()
-
-    vec = []
-    for i, joint in enumerate(active):
-        value = target_map[joint] if joint in target_map else current[i]
-        vec.append(clamp(robot, joint, value))
-    return vec
+    target = target_for_group(robot, group, target_map)
+    return [target[name] for name in group.get_active_joints()]
 
 
 def get_traj_goal_joint_map(traj):
@@ -87,9 +61,7 @@ def plan_and_execute_to_saved_goal(group, robot, saved_traj, filename):
 
 def force_trajectory_start_to_current(group, traj, label):
     names = list(traj.joint_trajectory.joint_names)
-    current_names = group.get_active_joints()
-    current_vals = group.get_current_joint_values()
-    current = dict(zip(current_names, current_vals))
+    current = fresh_hand_state(group)
 
     if not traj.joint_trajectory.points:
         return traj
@@ -103,12 +75,30 @@ def force_trajectory_start_to_current(group, traj, label):
     return traj
 
 
-def plan_and_execute_target(group, robot, target_map, label):
+def fresh_hand_state(group, timeout=2.0):
+    names = set(group.get_active_joints())
+    deadline = time.monotonic() + timeout
+    while not rospy.is_shutdown():
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        try:
+            message = rospy.wait_for_message('/joint_states', JointState, timeout=remaining)
+        except rospy.ROSException:
+            break
+        state = dict(zip(message.name, message.position))
+        if names.issubset(state):
+            return {name: state[name] for name in names}
+    raise RuntimeError('Fresh feedback for every hand joint is unavailable; task stopped')
+
+
+def plan_and_execute_target(group, robot, target_map, label, speed=1.0):
     rospy.logwarn("[hand-ui] Planning to: %s", label)
 
     target_vec = make_target_vector(group, robot, target_map)
 
     group.stop()
+    rospy.sleep(0.2)
     group.clear_pose_targets()
     group.set_start_state_to_current_state()
     group.set_joint_value_target(target_vec)
@@ -120,57 +110,10 @@ def plan_and_execute_target(group, robot, target_map, label):
 
     traj = force_trajectory_start_to_current(group, traj, label)
 
-    ok = group.execute(traj, wait=True)
+    ok = group.execute(scale_trajectory_speed(traj, speed), wait=True)
     group.stop()
 
     if not ok:
         raise RuntimeError("[hand-ui] Execution failed: %s" % label)
 
     rospy.sleep(SETTLE)
-
-
-def extract_delta_value(value):
-    """Return a signed joint delta from one saved delta-pkl entry."""
-    if isinstance(value, dict):
-        if "delta" in value:
-            return float(value["delta"])
-        if "change" in value:
-            change = value["change"]
-            if isinstance(change, str):
-                return float(change.replace("+", ""))
-            return float(change)
-        if "from" in value and "to" in value:
-            return float(value["to"]) - float(value["from"])
-    return float(value)
-
-
-def get_current_joint_map(group):
-    return dict(zip(group.get_active_joints(), group.get_current_joint_values()))
-
-
-def make_target_from_current_plus_deltas(group, robot, delta_data):
-    """Build target map by applying saved per-joint deltas to current joint angles."""
-    current = get_current_joint_map(group)
-    target = dict(current)
-
-    for joint_name, value in delta_data.items():
-        if joint_name not in current:
-            rospy.logwarn("[hand-ui] Delta joint not active, skipping: %s", joint_name)
-            continue
-        delta = extract_delta_value(value) * ITERATED_HAND_DELTA_SCALE
-        unclamped = current[joint_name] + delta
-        target[joint_name] = clamp(robot, joint_name, unclamped)
-        rospy.logwarn(
-            "[hand-ui] %s: current=%.12f, delta=%+.12f, target=%.12f",
-            joint_name, current[joint_name], delta, target[joint_name]
-        )
-
-    return target
-
-
-def plan_and_execute_current_plus_deltas(group, robot, delta_data, filename):
-    target_map = make_target_from_current_plus_deltas(group, robot, delta_data)
-    plan_and_execute_target(
-        group, robot, target_map,
-        "current hand angles plus deltas from %s" % filename,
-    )

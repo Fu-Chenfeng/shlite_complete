@@ -11,6 +11,20 @@ pose, dimensions, color, environment obstacles, robot startup/home pose, network
 addresses and planning targets. `.env` contains Docker images, host UID/GID and
 display settings. See [CONFIGURATION.md](docs/CONFIGURATION.md) for examples.
 
+Grasp source: `grasp.mode: graspit` reads `grasp.capture_file` (currently
+`grasps.json` in the project root). Set `mode: manual` to use the YAML pose and
+joint maps. JSON capture mode also reads the saved optimum gravity direction.
+Capture mode maps the hand relative to `object.pose` and uses
+`capture_tighten_degrees` for the stage-3 J2 bend (the joint before each tip). Generate a new plan after
+changing the capture. See [configuration](docs/CONFIGURATION.md).
+
+Set `robot.initial_z` to the robot mounting height above the table (metres;
+currently `0.012`, restart to apply), independently of the object/grasp.
+
+Set `object.grasp_z_offset: 0.02` to raise only the object and grasp target by
+2 cm. Reset simulation recreates the session at arm home and its initial hand and
+world/object positions, including this offset.
+
 Set `object.hand_collision: false` to disable hand-object contacts in Gazebo and
 hand-object collision checking in MoveIt; set `true` to enable them again.
 Restart simulation after changing this setting.
@@ -29,16 +43,19 @@ with **`Real-Control.sh`**. These executable launchers ship inside the project a
 so they work after copying or moving the folder without installation or path
 updates. Each opens a native control panel with
 Start, task check, step-by-step Replay, Status, Edit config.yaml and Shut down
-buttons. Simulation also offers Plan, execute & save. No commands need to be
+buttons and a Saved trajectories dropdown. Simulation also offers Plan, execute
+& save and Reset simulation. No commands need to be
 typed for everyday sessions. The optional `./robotctl shortcuts` command only
 regenerates the launchers inside the project; it writes no external shortcuts.
 
 Start real hardware launches ROS core, the NUC hand loop, UR5 driver, adapter and
 MoveIt in order, waiting for readiness. Keep the hand clear during calibration;
 start the External Control program on the pendant when prompted. Startup never
-replays a task. Replay opens a terminal for Enter/q stage prompts. Finish or quit
-the task and close its terminal before using Shut down. Keep the panel open
-until shutdown completes; real shutdown retains the original hand calibration.
+replays a task. Replay opens a terminal for Enter/q stage prompts. Simulation
+shutdown and Reset stay available during startup, planning, replay and terminal prompts;
+it cancels the task wait and stops the simulation container. For real hardware,
+finish or quit the task and close its terminal before shutdown. Keep the panel
+open until shutdown completes; real shutdown retains the original hand calibration.
 SSH access must already work (unlock an encrypted key in your SSH agent first).
 
 Host desktop controls require `python3-yaml`, `python3-gi`, `gir1.2-gtk-3.0`,
@@ -66,14 +83,19 @@ Wait for Gazebo, RViz and MoveIt. **Terminal 2:**
 
 ```bash
 cd ~/shlite_complete
-./robotctl sim plan       # plan, save and execute the original task in Gazebo
+./robotctl sim plan       # plan, save and execute the five-stage task in Gazebo
 ```
 
-Planning inputs are in `config.yaml` under `planning` and `robot.home_joints`.
-Each planning run saves into a new `trajectories/YYYY-MM-DD_HH-MM-SS/` folder
-(Tokyo time), with `arm/` and `hand/` inside. Earlier runs are preserved.
-Replay uses the latest completed run by default; set `trajectories.replay_run`
-in `config.yaml` to a timestamp folder name to select an older run.
+Planning inputs are in `config.yaml`: `robot.home_joints` for the arm home,
+`grasp` for the world-frame palm pose and both hand joint targets, and `planning`
+for motion settings including the currently configured 0.20 m lift.
+GraspIt plans save to a folder named after the input file, e.g. `trajectories/grasps/`.
+Repeated saves add `_001`, `_002`, etc. Manual plans use `YYYY-MM-DD_HH-MM-SS`
+(Tokyo time). Each folder has `arm/` and `hand/` inside; earlier runs are preserved.
+Replay uses the latest completed five-stage run by default; set `trajectories.replay_run`
+in `config.yaml` to a saved folder name to select another five-stage run.
+The old `2026-11-10_13-35-00` recording is archived unchanged; generate a new run
+before using the updated replay.
 To replay the currently saved task instead of generating another:
 
 ```bash
@@ -150,25 +172,31 @@ This performs the original hand shutdown calibration, stops all ROS nodes on
 this session's master, and stops the NUC and workstation containers. The laptop,
 NUC and UR control box stay powered on. If calibration or SSH fails, the command
 stops at that failure so you can inspect it. Do not close ROS core first.
+If the real core has already exited, shutdown finishes container cleanup without
+attempting calibration. Repeating shutdown is supported and does not contact a
+running simulation master. After containers stop, the panel closes lingering
+local launchers and SSH clients.
 
 ## Shared trajectories and sequence
 
 Both modes use **`app/replay.py`**, **`trajectories/`**, and the same sequence:
 
-1. Zero/open hand.
-2. Thumb-only hand goal.
-3. Arm approach to captured hand pose.
-4. Move all fingers.
-5. Arm palm shift.
-6. Hand adjustment using saved deltas.
-7. Arm additional offset.
-8. Straight Z lift.
-9. Arm home.
+1. Move `rh_THJ5`, `rh_THJ4`, and each finger's J4 to their full grasp targets;
+   move other hand joints 60% toward their targets (`planning.approach_hand_fraction`), then move the arm so
+   `rh_palm` reaches `grasp.translation` and `grasp.orientation`.
+2. Close the fingers to `grasp.joint_angles`.
+3. Apply `grasp.tightened_joint_angles` (capture mode: finger/thumb J2 joints +`capture_tighten_degrees`).
+4. Lift the palm by `planning.lift_distance` (currently **0.20 m**) along world Z,
+   rotating during the lift to align the captured gravity direction with world-down
+   when `planning.lift_align_gravity` is enabled.
+5. Return the arm to `robot.home_joints`, then set every hand joint to zero.
 
-Every stage waits for completion; a failed stage stops the sequence. Arm paths
-are replayed with saved timing after checking/moving to their first point. Hand
-paths are replanned to saved final joint goals; stage 6 applies saved deltas to
-the current hand position. This preserves the previous working replay behavior.
+Replay prompts once before each stage; stages 1 and 5 each complete both actions
+in order. New recordings replay the exact saved hand preparation posture.
+A failed action stops the sequence. Arm paths retain their saved timing. Hand
+motions use the absolute targets saved with the recording. Later config edits
+apply to newly planned runs. Each run contains `task.json` with its five-stage
+format and config snapshot; legacy recordings are rejected by this workflow.
 See [TRAJECTORIES.md](docs/TRAJECTORIES.md) for files and settings.
 
 ## Project contents

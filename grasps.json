@@ -1,0 +1,267 @@
+{
+    "coordinate_frame": "world",
+    "grasps": [
+        {
+            "captured_at_utc": "2026-11-10T09:34:30.774Z",
+            "dof_values": [
+                0.3490658503988659,
+                1.5707963267948966,
+                0.078125,
+                0,
+                1.5707963267948966,
+                0.30338703239328235,
+                -0.3490658503988659,
+                1.2093963263138716,
+                0.8854067009173237,
+                -0.19390436354665108,
+                1.2217304763960306,
+                -0.00998845674469802,
+                0.3570021875208809
+            ],
+            "gravity_direction_world": [
+                0.7122151531290275,
+                -0.5445403549605587,
+                -0.4429733372030698
+            ],
+            "hand_name": "shadowhand_motor",
+            "hand_pose_world": {
+                "quaternion_xyzw": [
+                    -0.734142241062713,
+                    0.03361192719326708,
+                    0.3216179042998026,
+                    -0.5970488521650259
+                ],
+                "translation_mm": [
+                    -163.4435939236105,
+                    118.27132251005517,
+                    112.33881426785621
+                ]
+            },
+            "joints": [
+                {
+                    "angle_deg": 110.0000085715136,
+                    "angle_rad": 1.9198623267948967,
+                    "chain_index": 0,
+                    "chain_tip_link_name": "shadowhand_motor_chain0_link3",
+                    "dof_index": 0,
+                    "joint_index": 0,
+                    "joint_value_rad": 0.3490660000000001,
+                    "model_offset_rad": 1.5707963267948966,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": 90.0002104591497,
+                    "angle_rad": 1.5708,
+                    "chain_index": 0,
+                    "chain_tip_link_name": "shadowhand_motor_chain0_link3",
+                    "dof_index": 1,
+                    "joint_index": 1,
+                    "joint_value_rad": 1.5708,
+                    "model_offset_rad": 0,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": 4.4762327744595565,
+                    "angle_rad": 0.078125,
+                    "chain_index": 0,
+                    "chain_tip_link_name": "shadowhand_motor_chain0_link3",
+                    "dof_index": 2,
+                    "joint_index": 2,
+                    "joint_value_rad": 0.078125,
+                    "model_offset_rad": 0,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": 3.580986219567645,
+                    "angle_rad": 0.0625,
+                    "chain_index": 0,
+                    "chain_tip_link_name": "shadowhand_motor_chain0_link3",
+                    "dof_index": 2,
+                    "joint_index": 3,
+                    "joint_value_rad": 0.0625,
+                    "model_offset_rad": 0,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": 90,
+                    "angle_rad": 1.5707963267948966,
+                    "chain_index": 1,
+                    "chain_tip_link_name": "shadowhand_motor_chain1_link3",
+                    "dof_index": 3,
+                    "joint_index": 0,
+                    "joint_value_rad": 0,
+                    "model_offset_rad": 1.5707963267948966,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": 90.0002104591497,
+                    "angle_rad": 1.5708,
+                    "chain_index": 1,
+                    "chain_tip_link_name": "shadowhand_motor_chain1_link3",
+                    "dof_index": 4,
+                    "joint_index": 1,
+                    "joint_value_rad": 1.5708,
+                    "model_offset_rad": 0,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": 17.38279651513387,
+                    "angle_rad": 0.30338703239328235,
+                    "chain_index": 1,
+                    "chain_tip_link_name": "shadowhand_motor_chain1_link3",
+                    "dof_index": 5,
+                    "joint_index": 2,
+                    "joint_value_rad": 0.30338703239328235,
+                    "model_offset_rad": 0,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": 13.906237212107095,
+                    "angle_rad": 0.24270962591462586,
+                    "chain_index": 1,
+                    "chain_tip_link_name": "shadowhand_motor_chain1_link3",
+                    "dof_index": 5,
+                    "joint_index": 3,
+                    "joint_value_rad": 0.24270962591462586,
+                    "model_offset_rad": 0,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": 69.99999142848641,
+                    "angle_rad": 1.2217303267948965,
+                    "chain_index": 2,
+                    "chain_tip_link_name": "shadowhand_motor_chain2_link3",
+                    "dof_index": 6,
+                    "joint_index": 0,
+                    "joint_value_rad": -0.3490660000000001,
+                    "model_offset_rad": 1.5707963267948966,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": 249.29330525641137,
+                    "angle_rad": 4.350988979903665,
+                    "chain_index": 2,
+                    "chain_tip_link_name": "shadowhand_motor_chain2_link3",
+                    "dof_index": 7,
+                    "joint_index": 1,
+                    "joint_value_rad": 1.2093963263138718,
+                    "model_offset_rad": 3.141592653589793,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": 50.7300671151646,
+                    "angle_rad": 0.8854067009173237,
+                    "chain_index": 2,
+                    "chain_tip_link_name": "shadowhand_motor_chain2_link3",
+                    "dof_index": 8,
+                    "joint_index": 2,
+                    "joint_value_rad": 0.8854067009173237,
+                    "model_offset_rad": 0,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": 40.584053692131675,
+                    "angle_rad": 0.7083253607338589,
+                    "chain_index": 2,
+                    "chain_tip_link_name": "shadowhand_motor_chain2_link3",
+                    "dof_index": 8,
+                    "joint_index": 3,
+                    "joint_value_rad": 0.7083253607338589,
+                    "model_offset_rad": 0,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": -11.109901660393477,
+                    "angle_rad": -0.19390436354665108,
+                    "chain_index": 3,
+                    "chain_tip_link_name": "shadowhand_motor_chain3_link3",
+                    "dof_index": 9,
+                    "joint_index": 0,
+                    "joint_value_rad": -0.19390436354665108,
+                    "model_offset_rad": 0,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": -20.000027295481935,
+                    "angle_rad": -0.3490663267948966,
+                    "chain_index": 3,
+                    "chain_tip_link_name": "shadowhand_motor_chain3_link3",
+                    "dof_index": 10,
+                    "joint_index": 1,
+                    "joint_value_rad": 1.22173,
+                    "model_offset_rad": -1.5707963267948966,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": -0.5722964153201778,
+                    "angle_rad": -0.00998845674469802,
+                    "chain_index": 3,
+                    "chain_tip_link_name": "shadowhand_motor_chain3_link3",
+                    "dof_index": 11,
+                    "joint_index": 2,
+                    "joint_value_rad": -0.00998845674469802,
+                    "model_offset_rad": 0,
+                    "type": "revolute"
+                },
+                {
+                    "angle_deg": 20.454718621884464,
+                    "angle_rad": 0.3570021875208809,
+                    "chain_index": 3,
+                    "chain_tip_link_name": "shadowhand_motor_chain3_link3",
+                    "dof_index": 12,
+                    "joint_index": 3,
+                    "joint_value_rad": 0.3570021875208809,
+                    "model_offset_rad": 0,
+                    "type": "revolute"
+                }
+            ],
+            "object_name": "tofuprintfinal",
+            "object_pose_world": {
+                "quaternion_xyzw": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "translation_mm": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            "screenshot": "grasps_images_YZEgOs/grasp_0001.png"
+        }
+    ],
+    "parameter_descriptions": {
+        "coordinate_frame": "All poses and gravity vectors use the fixed GraspIt world frame.",
+        "grasps": "Snapshots in capture order; changing the scene after Capture does not change a saved snapshot.",
+        "grasps[].captured_at_utc": "Capture time in UTC, ISO 8601 with milliseconds.",
+        "grasps[].dof_values": "Raw hand degree-of-freedom values in robot DOF index order (zero based): radians for rotational DOFs, millimetres for linear DOFs. Coupled joints can share a DOF; these are separate from the actual joint angles below.",
+        "grasps[].gravity_direction_world": "Dimensionless unit vector [gx, gy, gz] pointing in the direction gravity acts in world coordinates. Copied from the selected hand's current search gravity; select the optimum search result before Capture. Without a selected search result this may be the default world -Y direction.",
+        "grasps[].hand_name": "Name of the selected hand in GraspIt at capture time.",
+        "grasps[].hand_pose_world": "Rigid transform mapping the hand base frame into world coordinates.",
+        "grasps[].hand_pose_world.quaternion_xyzw": "Hand base orientation as unit quaternion [x, y, z, w], mapping hand-local vectors into world coordinates.",
+        "grasps[].hand_pose_world.translation_mm": "Hand base origin [x, y, z] in world coordinates, in millimetres.",
+        "grasps[].joints": "Every joint in every kinematic chain, including coupled joints and fixed model offsets. Values are read directly from the current hand.",
+        "grasps[].joints[].angle_deg": "The same actual revolute joint angle in degrees.",
+        "grasps[].joints[].angle_rad": "Total DH theta rotation about this joint's local +Z axis in radians: joint_value_rad + model_offset_rad.",
+        "grasps[].joints[].chain_index": "Zero-based index of the kinematic chain in the loaded hand model.",
+        "grasps[].joints[].chain_tip_link_name": "Name of the last link in this chain, identifying the finger in the loaded hand model; omitted for chains with no links.",
+        "grasps[].joints[].displacement_mm": "Total DH d translation along this joint's local +Z axis in millimetres: joint_value_mm + model_offset_mm. Present instead of angle fields for sliding joints.",
+        "grasps[].joints[].dof_index": "Zero-based index into dof_values for the DOF driving this joint.",
+        "grasps[].joints[].joint_index": "Zero-based joint index within that chain, not a link index.",
+        "grasps[].joints[].joint_value_mm": "Current GraspIt prismatic joint coordinate in millimetres, excluding the fixed model offset.",
+        "grasps[].joints[].joint_value_rad": "Current GraspIt revolute joint coordinate in radians, including DOF coupling but excluding the fixed model offset.",
+        "grasps[].joints[].model_offset_mm": "Fixed DH translation offset in millimetres from the loaded hand model.",
+        "grasps[].joints[].model_offset_rad": "Fixed Denavit-Hartenberg (DH) angular offset in radians from the loaded hand model.",
+        "grasps[].joints[].type": "revolute means a rotational joint; prismatic means a sliding joint.",
+        "grasps[].object_name": "Name of the grasp target, if one was selected at capture time; otherwise omitted.",
+        "grasps[].object_pose_world": "Optional rigid transform mapping the target object's local frame into world coordinates at capture time.",
+        "grasps[].object_pose_world.quaternion_xyzw": "Target object orientation as unit quaternion [x, y, z, w], mapping object-local vectors into world coordinates.",
+        "grasps[].object_pose_world.translation_mm": "Target object origin [x, y, z] in world coordinates, in millimetres.",
+        "grasps[].screenshot": "Relative path from this JSON file to the capture-time PNG of the main GraspIt window, including the displayed force arrows, gravity arrow and legend. Capture does not calculate missing forces or alter the camera.",
+        "parameter_descriptions": "Definitions of every saved parameter; dotted names refer to nested fields.",
+        "schema_version": "Version of this grasp snapshot file format."
+    },
+    "schema_version": 1
+}

@@ -9,6 +9,7 @@ import subprocess
 import json
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import Mock, patch
 import xml.etree.ElementTree as ET
@@ -34,15 +35,31 @@ class ConfigurationTest(unittest.TestCase):
         self.root = Path(self.temp.name)
         shutil.copytree(ROOT / 'assets', self.root / 'assets')
         shutil.copy(ROOT / 'config.yaml', self.root / 'config.yaml')
+        shutil.copy(ROOT / 'assets/grasps/261110/261110.txt', self.root / '261110.txt')
+        shutil.copy(ROOT / 'grasps.json', self.root / 'grasps.json')
         self.config = settings.load_config(self.root)
 
     def write(self):
         (self.root / 'config.yaml').write_text(yaml.safe_dump(self.config))
 
+    def test_physics_step_sets_world_timestep_and_matching_update_rate(self):
+        original = (self.root / self.config['simulation']['world']).read_bytes()
+        self.config['simulation']['physics_step'] = 0.00025
+        world = ET.parse(settings.prepare_simulation(self.config, root=self.root))
+        self.assertEqual(float(world.findtext('world/physics/max_step_size')), 0.00025)
+        self.assertEqual(float(world.findtext('world/physics/real_time_update_rate')), 4000.0)
+        self.assertEqual((self.root / self.config['simulation']['world']).read_bytes(), original)
+        for value in (0, -0.001, float('nan'), '0.00025'):
+            self.config['simulation']['physics_step'] = value
+            self.write()
+            with self.assertRaisesRegex(ValueError, 'simulation.physics_step'):
+                settings.load_config(self.root)
+
     def test_object_dimensions_pose_color_and_mass_reach_generated_scene(self):
         obj = self.config['object']
         obj.update(visual_size=[0.1, 0.2, 0.3], collision_size=[0.09, 0.19, 0.29],
-                   pose=[0.5, 0.1, 0.2, 0, 0, 0.5], color=[0, 1, 0, 1], mass=0.4)
+                   pose=[0.5, 0.1, 0.2, 0, 0, 0.5], color=[0, 1, 0, 1], mass=0.4,
+                   mesh=None, collision_mesh=False, grasp_z_offset=0.0)
         original = (self.root / obj['model']).read_bytes()
         output = settings.prepare_simulation(self.config, root=self.root)
         model = ET.parse(output).find("world/model[@name='rect_object']")
@@ -58,6 +75,7 @@ class ConfigurationTest(unittest.TestCase):
     def test_mesh_uses_container_path_and_separate_collision_box(self):
         self.config['object']['mesh'] = 'assets/models/tofu_real.stl'
         self.config['object']['mesh_scale'] = [0.001] * 3
+        self.config['object']['collision_mesh'] = False
         model = settings.object_model(self.config, self.root)
         self.assertEqual(model.findtext('link/visual/geometry/mesh/uri'),
                          'file:///project/assets/models/tofu_real.stl')
@@ -77,7 +95,8 @@ class ConfigurationTest(unittest.TestCase):
             plugin = world.find("world/plugin[@name='shlite_hand_object_collisions']")
             self.assertEqual(plugin is None, enabled)
             obj = world.find("world/model[@name='rect_object']")
-            self.assertEqual(obj.findtext('link/collision/geometry/box/size'), '0.031 0.087 0.072')
+            expected_geometry = 'mesh' if self.config['object'].get('collision_mesh') else 'box'
+            self.assertIsNotNone(obj.find('link/collision/geometry/' + expected_geometry))
             self.assertIsNotNone(world.find("world/model[@name='ground_plane_user']/link/collision"))
 
     def test_cell_and_open_worlds_keep_their_environment_selection(self):
@@ -85,6 +104,10 @@ class ConfigurationTest(unittest.TestCase):
         self.config['environment'][1]['enabled'] = False
         for filename, expected in [('open.world', 2), ('cell.world', 5)]:
             world = ET.parse(settings.prepare_simulation(self.config, 'assets/worlds/' + filename, self.root))
+            selected = settings.world_model_names(self.config, 'assets/worlds/' + filename, self.root)
+            expected_names = {item['name'] for item in self.config['environment']
+                              if item['enabled'] and item['name'] in selected} | {'rect_object'}
+            self.assertEqual({model.get('name') for model in world.findall('world/model')}, expected_names)
             self.assertEqual(len(world.findall('world/model')), expected)
             self.assertEqual(world.findtext("world/model[@name='ground_plane_user']/link/visual/geometry/box/size"),
                              '1 2 0.01')
@@ -96,8 +119,11 @@ class ConfigurationTest(unittest.TestCase):
                        lambda c: c['object'].update(enabled='false'),
                        lambda c: c['object'].update(hand_collision='false'),
                        lambda c: c['network'].update(ros_port=70000),
-                       lambda c: c['planning'].update(stage5_duration=float('nan'))]:
+                       lambda c: c['planning'].update(lift_min_duration=float('nan')),
+                       lambda c: c['grasp'].update(translation=[0, 1]),
+                       lambda c: c['grasp'].update(orientation=[0, 0, 0, 0])]:
             self.config = copy.deepcopy(settings.load_config(ROOT))
+            self.config['grasp']['mode'] = 'manual'
             change(self.config)
             self.write()
             with self.assertRaisesRegex(ValueError, 'Invalid config.yaml'):
@@ -159,6 +185,159 @@ class ConfigurationTest(unittest.TestCase):
 
 
 class DesktopSessionTest(unittest.TestCase):
+    def test_reset_simulation_restores_readiness_without_hardware_commands(self):
+        session = self.session('sim')
+        session.active = session.ready = True
+        session.reset()
+        self.assertEqual(session.run.call_args_list, [
+            unittest.mock.call('sim', 'shutdown', timeout=240, stopping=True),
+            unittest.mock.call('init'), unittest.mock.call('validate-config'), unittest.mock.call('gui'),
+            unittest.mock.call('sim', 'preflight'), unittest.mock.call('sim', 'up'),
+            unittest.mock.call('sim', 'wait', 'sim'), unittest.mock.call('sim', 'collisions')])
+        session.launch.assert_called_once_with('start')
+        self.assertTrue(session.ready)
+
+    def test_shutdown_during_reset_prevents_simulation_restarting(self):
+        session = self.session('sim')
+        session.active = session.ready = True
+        session.run.side_effect = lambda *args, **kwargs: session.cancel.set()
+        with self.assertRaises(Cancelled):
+            session.reset()
+        session.run.assert_called_once_with('sim', 'shutdown', timeout=240, stopping=True)
+        session.launch.assert_not_called()
+        self.assertFalse(session.active)
+        self.assertFalse(session.ready)
+        self.assertTrue(session.cancel.is_set())
+
+    def test_reset_is_rejected_in_real_mode(self):
+        session = self.session('real')
+        with self.assertRaises(RuntimeError):
+            session.reset()
+        session.run.assert_not_called()
+
+    def test_reset_is_available_when_simulation_is_not_ready(self):
+        session = self.session('sim')
+        session.active, session.ready = True, False
+        session.reset()
+        self.assertTrue(session.ready)
+
+    def test_selected_replay_run_is_passed_to_check_and_task_terminal(self):
+        from task_definition import TASK_VERSION
+        from trajectory_store import create_run, finish_run
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            selected = create_run(root / 'trajectories', task_version=TASK_VERSION)
+            finish_run(selected, True)
+            session = self.session('sim')
+            session.terminal_task = Mock()
+            with patch('desktop_session.ROOT', root):
+                session.replay('check', selected.name)
+                session.replay('replay', selected.name)
+            expected = '/project/trajectories/' + selected.name
+            session.run.assert_called_once_with('sim', 'check', '--trajectory-root', expected)
+            session.terminal_task.assert_called_once_with('replay', '--trajectory-root', expected)
+
+    def test_reset_request_interrupts_waiting_task_before_restart(self):
+        session = Session('sim', Mock())
+        session.active = session.ready = True
+        session.run = Mock()
+        session.launch = Mock()
+        waiting = threading.Event()
+        finished = threading.Event()
+        errors = []
+        process = Mock(pid=12345, returncode=0)
+        def poll():
+            waiting.set()
+            return None
+        process.poll.side_effect = poll
+        def task():
+            try:
+                with session.lock:
+                    session.terminal_task('replay')
+            except Cancelled:
+                pass
+            except Exception as exc:
+                errors.append(exc)
+        def reset():
+            try:
+                with session.lock:
+                    session.reset()
+            except Exception as exc:
+                errors.append(exc)
+            finally:
+                finished.set()
+        with patch('desktop_session.shutil.which', return_value='/usr/bin/gnome-terminal'), \
+                patch('desktop_session.subprocess.Popen', return_value=process), \
+                patch('desktop_session.os.killpg'):
+            worker = threading.Thread(target=task, daemon=True)
+            worker.start()
+            self.assertTrue(waiting.wait(2))
+            session.request_reset()
+            restart = threading.Thread(target=reset, daemon=True)
+            restart.start()
+            self.assertTrue(finished.wait(3), 'Reset remained blocked on the task terminal')
+            worker.join(1)
+            restart.join(1)
+        self.assertFalse(errors)
+        self.assertTrue(session.ready)
+        self.assertFalse(session.task_active)
+        session.launch.assert_called_once_with('start')
+
+    def test_failed_reset_keeps_shutdown_available(self):
+        session = self.session('sim')
+        session.active = session.ready = True
+        session.run.side_effect = RuntimeError('reset failed')
+        with self.assertRaisesRegex(RuntimeError, 'reset failed'):
+            session.reset()
+        self.assertTrue(session.active)
+        self.assertFalse(session.ready)
+
+    def test_simulation_shutdown_cancels_waiting_terminal_and_releases_lock(self):
+        session = Session('sim', Mock())
+        session.active = session.ready = True
+        process = Mock(pid=12345, returncode=0)
+        process.poll.return_value = None
+        waiting = threading.Event()
+        finished = threading.Event()
+        errors = []
+        def poll():
+            waiting.set()
+            return None
+        process.poll.side_effect = poll
+        def task():
+            try:
+                with session.lock:
+                    session.terminal_task('replay')
+            except Cancelled:
+                pass
+            except Exception as exc:
+                errors.append(exc)
+            finally:
+                finished.set()
+        with patch('desktop_session.shutil.which', return_value='/usr/bin/gnome-terminal'), \
+                patch('desktop_session.subprocess.Popen', return_value=process), \
+                patch('desktop_session.os.killpg') as terminate:
+            worker = threading.Thread(target=task, daemon=True)
+            worker.start()
+            self.assertTrue(waiting.wait(2), 'Task never entered terminal wait')
+            session.cancel.set()
+            self.assertTrue(finished.wait(2), 'Shutdown remained blocked on the task terminal')
+            worker.join(1)
+            terminate.assert_called_once_with(process.pid, __import__('signal').SIGTERM)
+        self.assertFalse(errors)
+        self.assertFalse(session.task_active)
+        self.assertTrue(session.lock.acquire(timeout=1))
+        session.lock.release()
+
+    def test_failed_terminal_start_does_not_leave_task_active(self):
+        session = Session('sim', Mock())
+        session.ready = True
+        with patch('desktop_session.shutil.which', return_value='/usr/bin/gnome-terminal'), \
+                patch('desktop_session.subprocess.Popen', side_effect=OSError('terminal unavailable')):
+            with self.assertRaisesRegex(OSError, 'terminal unavailable'):
+                session.terminal_task('plan')
+        self.assertFalse(session.task_active)
+
     def session(self, mode):
         session = Session(mode, Mock())
         session.run = Mock()
@@ -184,8 +363,25 @@ class DesktopSessionTest(unittest.TestCase):
         self.assertEqual(events[5:], [
             ('launch', 'core'), ('real', 'wait-core'), ('launch', 'nuc'), ('real', 'wait', 'hand'),
             ('launch', 'ur5'), ('real', 'wait', 'ur5'), ('launch', 'adapter'), ('launch', 'moveit'),
-            ('real', 'wait', 'real'), ('real', 'obstacles'), ('real', 'collisions')])
+            ('real', 'wait', 'scene'), ('real', 'obstacles'),
+            ('real', 'wait', 'real'), ('real', 'collisions')])
         self.assertTrue(session.ready)
+
+    def test_real_scene_loads_even_when_robot_program_is_not_ready(self):
+        session = self.session('real')
+        events = []
+        def execute(*args, **kwargs):
+            events.append(args)
+            if args == ('real', 'wait', 'real'):
+                raise RuntimeError('robot program is not running')
+        session.run.side_effect = execute
+        with self.assertRaisesRegex(RuntimeError, 'robot program'):
+            session.start()
+        self.assertLess(events.index(('real', 'wait', 'scene')),
+                        events.index(('real', 'obstacles')))
+        self.assertLess(events.index(('real', 'obstacles')),
+                        events.index(('real', 'wait', 'real')))
+        self.assertFalse(session.ready)
 
     def test_hand_failure_prevents_ur5_start_and_leaves_shutdown_available(self):
         session = self.session('real')
@@ -236,6 +432,19 @@ class DesktopSessionTest(unittest.TestCase):
         session.children = [('core', Mock())]
         session.shutdown()
         session.run.assert_called_once_with('real', 'stop-idle', timeout=240, stopping=True)
+        self.assertFalse(session.active)
+
+    def test_shutdown_reaps_lingering_ssh_only_after_container_cleanup(self):
+        session = self.session('real')
+        session.active = True
+        process = Mock(pid=12345)
+        process.wait.side_effect = [subprocess.TimeoutExpired('ssh', 10), 0]
+        session.children = [('nuc', process)]
+        with patch('desktop_session.os.killpg') as kill:
+            session.shutdown()
+            kill.assert_called_once_with(12345, __import__('signal').SIGTERM)
+        session.run.assert_called_once_with('real', 'shutdown', timeout=240, stopping=True)
+        self.assertEqual(session.children, [])
         self.assertFalse(session.active)
 
     def test_cancelled_start_never_launches_a_process(self):

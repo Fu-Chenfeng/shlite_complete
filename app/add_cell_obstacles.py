@@ -6,7 +6,7 @@ import rospy
 import moveit_commander
 from geometry_msgs.msg import PoseStamped
 
-from project_config import load_config
+from project_config import load_config, project_path, object_pose, world_model_names
 
 
 def box_pose(values):
@@ -25,21 +25,26 @@ def box_pose(values):
 
 def main():
     config = load_config()
+    present = world_model_names(config)
     rospy.init_node('add_cell_obstacles')
     moveit_commander.roscpp_initialize([])
     try:
         scene = moveit_commander.PlanningSceneInterface(synchronous=True)
         for definition in config['environment']:
-            if definition['enabled']:
+            if definition['enabled'] and definition['name'] in present:
                 scene.add_box(definition['name'], box_pose(definition['pose']), size=definition['size'])
             else:
                 scene.remove_world_object(definition['name'])
         obj = config['object']
         if obj['enabled'] and obj['add_to_real_scene']:
-            scene.add_box('rect_object', box_pose(obj['pose']), size=obj['collision_size'])
+            if obj.get('collision_mesh', False):
+                scene.add_mesh('rect_object', box_pose(object_pose(config)),
+                               str(project_path(obj['mesh'])), size=tuple(obj['mesh_scale']))
+            else:
+                scene.add_box('rect_object', box_pose(object_pose(config)), size=obj['collision_size'])
         else:
             scene.remove_world_object('rect_object')
-        print('Loaded config.yaml environment into MoveIt planning scene.')
+        print('Loaded environment from %s into MoveIt planning scene.' % config['simulation']['world'])
     finally:
         moveit_commander.roscpp_shutdown()
 

@@ -1,0 +1,186 @@
+{
+  "version": 3,
+  "stages": [
+    {
+      "name": "Prepare thumb base, then approach hand grasp pose",
+      "actions": [
+        {
+          "group": "hand",
+          "file": "Stage_1_Prepare_thumb_base.pkl",
+          "target": "Stage_1_Prepare_thumb_base_target_joints.pkl"
+        },
+        {
+          "group": "arm",
+          "file": "Stage_1_Approach_grasp.pkl"
+        }
+      ]
+    },
+    {
+      "name": "Close fingers to grasp angles",
+      "actions": [
+        {
+          "group": "hand",
+          "file": "Stage_2_Close_fingers.pkl",
+          "target": "Stage_2_Close_fingers_target_joints.pkl"
+        }
+      ]
+    },
+    {
+      "name": "Apply tightened grasp angles",
+      "actions": [
+        {
+          "group": "hand",
+          "file": "Stage_3_Tighten_grasp.pkl",
+          "target": "Stage_3_Tighten_grasp_target_joints.pkl"
+        }
+      ]
+    },
+    {
+      "name": "Lift hand",
+      "actions": [
+        {
+          "group": "arm",
+          "file": "Stage_4_Lift.pkl"
+        }
+      ]
+    },
+    {
+      "name": "Return arm home, then zero hand",
+      "actions": [
+        {
+          "group": "arm",
+          "file": "Stage_5_Return_home.pkl"
+        },
+        {
+          "group": "hand",
+          "file": "Stage_5_Open_hand.pkl",
+          "target": "Stage_5_Open_hand_target_joints.pkl"
+        }
+      ]
+    }
+  ],
+  "grasp": {
+    "mode": "graspit",
+    "capture_file": "grasps.json",
+    "capture_index": 0,
+    "capture_tighten_degrees": 7.0,
+    "frame": "world",
+    "hand_link": "rh_palm",
+    "translation": [
+      0.356709752800318,
+      -0.04675446922432015,
+      0.08534219919308787
+    ],
+    "orientation": [
+      0.44353272441400815,
+      0.4410005039204862,
+      0.6876512346994612,
+      0.36869100522262677
+    ],
+    "joint_angles": {
+      "rh_FFJ4": 0.3490658503988659,
+      "rh_FFJ3": 1.5707963267948966,
+      "rh_FFJ2": 0.078125,
+      "rh_FFJ1": 0.0625,
+      "rh_MFJ4": 0,
+      "rh_MFJ3": 1.5707963267948966,
+      "rh_MFJ2": 0.30338703239328235,
+      "rh_MFJ1": 0.24270962591462586,
+      "rh_RFJ4": -0.3490658503988659,
+      "rh_RFJ3": 1.2093963263138718,
+      "rh_RFJ2": 0.8854067009173237,
+      "rh_RFJ1": 0.7083253607338589,
+      "rh_THJ5": -0.19390436354665108,
+      "rh_THJ4": 1.22173,
+      "rh_THJ2": -0.00998845674469802,
+      "rh_THJ1": 0.3570021875208809
+    },
+    "tightened_joint_angles": {
+      "rh_FFJ4": 0.3490658503988659,
+      "rh_FFJ3": 1.5707963267948966,
+      "rh_FFJ2": 0.20029804763960307,
+      "rh_FFJ1": 0.0625,
+      "rh_MFJ4": 0,
+      "rh_MFJ3": 1.5707963267948966,
+      "rh_MFJ2": 0.4255600800328854,
+      "rh_MFJ1": 0.24270962591462586,
+      "rh_RFJ4": -0.3490658503988659,
+      "rh_RFJ3": 1.2093963263138718,
+      "rh_RFJ2": 1.0075797485569267,
+      "rh_RFJ1": 0.7083253607338589,
+      "rh_THJ5": -0.19390436354665108,
+      "rh_THJ4": 1.22173,
+      "rh_THJ2": 0.11218459089490505,
+      "rh_THJ1": 0.3570021875208809
+    },
+    "capture_sha256": "07e80a2312075d3a2ddcbeb6ae2d606cbae144ac7b7b6849a9bd518ae5690d8d",
+    "gravity_direction_palm": [
+      0.0044438307642681325,
+      -0.7411270148924709,
+      0.6713501323189813
+    ],
+    "gravity_direction_graspit_world": [
+      0.7122151531290275,
+      -0.5445403549605587,
+      -0.4429733372030698
+    ]
+  },
+  "home_joints": {
+    "ra_shoulder_pan_joint": -0.873,
+    "ra_shoulder_lift_joint": -2.094,
+    "ra_elbow_joint": 2.094,
+    "ra_wrist_1_joint": -0.873,
+    "ra_wrist_2_joint": -0.611,
+    "ra_wrist_3_joint": -3.142
+  },
+  "planning": {
+    "arm_velocity": 0.08,
+    "arm_acceleration": 0.08,
+    "hand_velocity": 0.4,
+    "hand_acceleration": 0.4,
+    "planning_time": 60.0,
+    "planning_attempts": 5,
+    "joint_tolerance": 0.01,
+    "lift_distance": 0.2,
+    "lift_align_gravity": true,
+    "lift_rotation_step_degrees": 2.0,
+    "lift_step": 0.005,
+    "lift_min_fraction": 1.0,
+    "lift_velocity": 0.1,
+    "lift_acceleration": 0.1,
+    "lift_min_duration": 16.0
+  },
+  "thumb_preparation_joints": [
+    "rh_THJ5",
+    "rh_THJ4"
+  ],
+  "scene": {
+    "object_pose": [
+      0.41,
+      0.0,
+      0.044472000000000005,
+      1.5707963267948966,
+      0,
+      0
+    ],
+    "object_grasp_z_offset": 0.01
+  },
+  "lift_alignment": {
+    "gravity_direction_palm": [
+      0.0044438307642681325,
+      -0.7411270148924709,
+      0.6713501323189813
+    ],
+    "target_direction_world": [
+      0,
+      0,
+      -1
+    ],
+    "target_palm_orientation": [
+      0.5755019063585222,
+      0.710262361340651,
+      0.31342157483643746,
+      0.25708335276240035
+    ]
+  }
+}

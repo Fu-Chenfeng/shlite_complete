@@ -1,0 +1,21 @@
+{
+  "maximum_joint_origin_error_mm": 0.00023578142696521726,
+  "per_link_error_mm": {
+    "rh_ffknuckle": 8.107817003796693e-05,
+    "rh_ffproximal": 8.107817003796693e-05,
+    "rh_ffmiddle": 0.00013842687427320017,
+    "rh_ffdistal": 0.00017594879199952032,
+    "rh_mfknuckle": 0.00011701750924375847,
+    "rh_mfproximal": 0.00011701750924375847,
+    "rh_mfmiddle": 0.00018336033498817842,
+    "rh_mfdistal": 0.00023578142696521726,
+    "rh_rfknuckle": 6.828729263548826e-05,
+    "rh_rfproximal": 6.828729263548826e-05,
+    "rh_rfmiddle": 8.311630155834552e-05,
+    "rh_rfdistal": 0.00012221668543512164,
+    "rh_thbase": 5.714374874272656e-05,
+    "rh_thproximal": 5.714374874272656e-05,
+    "rh_thmiddle": 3.001592218164596e-05,
+    "rh_thdistal": 5.588332097167476e-05
+  }
+}

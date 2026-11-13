@@ -10,7 +10,7 @@ from std_msgs.msg import Bool
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('phase', choices=('hand', 'ur5', 'sim', 'real'))
+    parser.add_argument('phase', choices=('hand', 'ur5', 'scene', 'sim', 'real'))
     parser.add_argument('--timeout', type=float, default=180)
     args = parser.parse_args(rospy.myargv()[1:])
     rospy.init_node('shlite_startup_probe', anonymous=True)
@@ -27,6 +27,9 @@ def main():
                    else '/ur5_driver/controller_manager/list_controllers')
         rospy.wait_for_service(service, timeout=remaining())
         rospy.ServiceProxy(service, ListControllers)()
+    elif args.phase == 'scene':
+        rospy.wait_for_service('/get_planning_scene', timeout=remaining())
+        rospy.wait_for_service('/apply_planning_scene', timeout=remaining())
     else:
         rospy.wait_for_service('/get_planning_scene', timeout=remaining())
         rospy.wait_for_message('/joint_states', JointState, timeout=remaining())

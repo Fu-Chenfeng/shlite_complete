@@ -136,16 +136,28 @@ def start_nuc(cfg):
 
 
 def shutdown_real(cfg):
-    master(cfg, "real")
-    print("Keep the hand clear during shutdown calibration. Leave the other session terminals open.", flush=True)
-    calibration = ("if rosparam get /diagnostic_aggregator/load_diagnostic_analyzer/hand_serials_list; "
-                   "then exec roslaunch sr_utilities calibrate_hand_finder.launch node_shutdown:=true node_timeout:=10; "
-                   "else echo 'Hand diagnostic parameter absent; skipping calibration as in the original launcher.'; fi")
-    ros_command(cfg, "real", ["bash", "-c", calibration])
-    try:
-        ros_command(cfg, "real", ["rosnode", "kill", "--all"])
-    except subprocess.CalledProcessError:
-        print("Some ROS nodes did not respond; stopping containers next.", file=sys.stderr)
+    running = set(compose(cfg, "ps", "--status", "running", "--services", capture=True).stdout.split())
+    # A retry can follow a completed container stop. The shared ROS port may
+    # already belong to simulation, so never contact it without the real stack.
+    core_available = False
+    if "workstation" in running and "sim" not in running:
+        try:
+            master(cfg, "real")
+            core_available = True
+        except UserError:
+            pass
+    if core_available:
+        print("Keep the hand clear during shutdown calibration. Leave the other session terminals open.", flush=True)
+        calibration = ("if rosparam get /diagnostic_aggregator/load_diagnostic_analyzer/hand_serials_list; "
+                       "then exec roslaunch sr_utilities calibrate_hand_finder.launch node_shutdown:=true node_timeout:=10; "
+                       "else echo 'Hand diagnostic parameter absent; skipping calibration as in the original launcher.'; fi")
+        ros_command(cfg, "real", ["bash", "-c", calibration])
+        try:
+            ros_command(cfg, "real", ["rosnode", "kill", "--all"])
+        except subprocess.CalledProcessError:
+            print("Some ROS nodes did not respond; stopping containers next.", file=sys.stderr)
+    else:
+        print("Real ROS core is already unavailable; finishing container cleanup without calibration.", flush=True)
     ssh(cfg, shlex.join(["docker", "stop", "--time", "30", cfg["NUC_CONTAINER"]]))
     compose(cfg, "stop", "--timeout", "30", "ur5", "workstation")
     print("Session stopped. The laptop, NUC and UR control box remain powered on.")
@@ -204,6 +216,8 @@ def mode_command(cfg, mode, command, extra):
         project = load_config()
         world = next((arg.split(":=", 1)[1] for arg in extra if arg.startswith("world:=")), None)
         generated = prepare_simulation(project, world)
+        ros_command(cfg, mode, ['python3', '/project/app/simulation_models.py',
+                               '/project/' + generated.relative_to(ROOT).as_posix()])
         if project['object']['enabled'] and not project['object'].get('hand_collision', True):
             ros_command(cfg, mode, ['bash', '/project/docker/build-contact-plugin.sh'])
         overrides = [arg for arg in extra if not arg.startswith("world:=")]
