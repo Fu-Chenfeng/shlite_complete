@@ -16,12 +16,20 @@ from task_definition import save_task, load_task
 
 
 class GravityLiftTest(unittest.TestCase):
+    def captured_config(self):
+        config = load_config()
+        # The assertions below describe this fixed capture, independently of
+        # whichever grasp the desktop config currently selects.
+        config['grasp'] = resolve_capture(dict(config['grasp'], capture_index=0),
+                                          config['object']['pose'], ROOT / 'grasps.json')
+        return config
+
     def assertVector(self, actual, expected, places=8):
         for a, b in zip(actual, expected):
             self.assertAlmostEqual(a, b, places=places)
 
     def test_json_reads_actual_joint_values_without_dh_offsets(self):
-        grasp = load_config()['grasp']
+        grasp = self.captured_config()['grasp']
         self.assertAlmostEqual(grasp['joint_angles']['rh_FFJ4'], math.radians(20))
         self.assertAlmostEqual(grasp['joint_angles']['rh_FFJ3'], math.pi/2)
         self.assertAlmostEqual(grasp['joint_angles']['rh_RFJ3'], 1.2093963263138718)
@@ -37,7 +45,7 @@ class GravityLiftTest(unittest.TestCase):
 
     def test_capture_world_transform_does_not_change_object_relative_grasp(self):
         document = json.loads((ROOT / 'grasps.json').read_text())
-        config = load_config()
+        config = self.captured_config()
         original = config['grasp']
         q = unit([0.2, -0.3, 0.4, 0.8])
         record = document['grasps'][0]

@@ -37,10 +37,61 @@ class ConfigurationTest(unittest.TestCase):
         shutil.copy(ROOT / 'config.yaml', self.root / 'config.yaml')
         shutil.copy(ROOT / 'assets/grasps/261110/261110.txt', self.root / '261110.txt')
         shutil.copy(ROOT / 'grasps.json', self.root / 'grasps.json')
+        grasp = yaml.safe_load((ROOT / 'config.yaml').read_text())['grasp']
+        if grasp.get('mode') == 'graspit':
+            capture = settings.project_path(grasp['capture_file'], ROOT).relative_to(ROOT)
+            (self.root / capture).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(ROOT / capture, self.root / capture)
         self.config = settings.load_config(self.root)
 
     def write(self):
         (self.root / 'config.yaml').write_text(yaml.safe_dump(self.config))
+
+    def test_panel_world_overrides_default_without_changing_config(self):
+        original = (self.root / 'config.yaml').read_bytes()
+        for world in ('open.world', 'cell.world', 'open_no_collision.world'):
+            selection = 'assets/worlds/' + world
+            with patch.dict(os.environ, {settings.WORLD_ENV: selection}):
+                config = settings.load_config(self.root)
+                self.assertEqual(config['simulation']['world'], selection)
+                self.assertEqual(settings.world_model_names(config, root=self.root),
+                                 settings.world_model_names(config, selection, self.root))
+        self.assertEqual((self.root / 'config.yaml').read_bytes(), original)
+
+    def test_world_dropdown_does_not_require_readable_config(self):
+        (self.root / 'config.yaml').write_text('invalid: [')
+        choices, default = settings.world_choices(self.root)
+        self.assertEqual(default, 'assets/worlds/open.world')
+        self.assertEqual([settings.world_label(world) for world in choices],
+                         ['tofu', 'tofu no collision', 'tofu cell', 'no object'])
+
+    def test_no_object_world_keeps_tofu_environment_without_adding_the_object(self):
+        original = (self.root / 'config.yaml').read_bytes()
+        tofu = settings.load_config(self.root)
+        reference = copy.deepcopy(ET.parse(settings.prepare_simulation(tofu, root=self.root)).getroot())
+        reference_scene = reference.find('world')
+        reference_scene.remove(reference_scene.find("model[@name='rect_object']"))
+        for plugin in reference_scene.findall("plugin[@name='shlite_hand_object_collisions']"):
+            reference_scene.remove(plugin)
+        selection = 'assets/worlds/no_object.world'
+        with patch.dict(os.environ, {settings.WORLD_ENV: selection}):
+            config = settings.load_config(self.root)
+        self.assertFalse(config['object']['enabled'])
+        result = ET.parse(settings.prepare_simulation(config, root=self.root)).getroot()
+        self.assertEqual(ET.tostring(result), ET.tostring(reference))
+        self.assertEqual((self.root / 'config.yaml').read_bytes(), original)
+        # Explicit CLI world overrides also must not reinsert the configured object.
+        result = ET.parse(settings.prepare_simulation(tofu, '/project/' + selection, self.root))
+        self.assertIsNone(result.find("world/model[@name='rect_object']"))
+        self.assertTrue(tofu['object']['enabled'])
+
+    def test_selected_world_reaches_container_commands_in_both_modes(self):
+        selected = 'assets/worlds/cell.world'
+        for mode in ('sim', 'real'):
+            with patch.dict(os.environ, {settings.WORLD_ENV: selected}), patch.object(ctl, 'compose') as compose:
+                ctl.ros_command({'PC_IP': 'localhost', 'ROS_PORT': '11311'}, mode, ['python3', '/project/app/status.py'])
+                command = compose.call_args.args[-1]
+                self.assertIn('export SHLITE_WORLD=' + selected + ';', command)
 
     def test_physics_step_sets_world_timestep_and_matching_update_rate(self):
         original = (self.root / self.config['simulation']['world']).read_bytes()
@@ -185,6 +236,21 @@ class ConfigurationTest(unittest.TestCase):
 
 
 class DesktopSessionTest(unittest.TestCase):
+    def test_each_panel_keeps_its_own_world_for_commands_and_terminals(self):
+        sim, real = Session('sim', Mock()), Session('real', Mock())
+        sim.world = 'assets/worlds/cell.world'
+        real.world = 'assets/worlds/open.world'
+        self.assertEqual(sim.environment()[settings.WORLD_ENV], sim.world)
+        self.assertEqual(real.environment()[settings.WORLD_ENV], real.world)
+        sim.ready = True
+        process = Mock(returncode=0)
+        process.poll.return_value = 0
+        with patch('desktop_session.shutil.which', return_value='/usr/bin/gnome-terminal'), \
+                patch('desktop_session.subprocess.Popen', return_value=process) as spawn:
+            sim.terminal_task('plan')
+        self.assertEqual(spawn.call_args.kwargs['env'][settings.WORLD_ENV], sim.world)
+        self.assertIn(settings.WORLD_ENV + '=' + sim.world, spawn.call_args.args[0])
+
     def test_reset_simulation_restores_readiness_without_hardware_commands(self):
         session = self.session('sim')
         session.active = session.ready = True

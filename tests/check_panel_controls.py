@@ -32,6 +32,10 @@ with tempfile.TemporaryDirectory() as folder:
     session = Session('sim', Mock())
     session.active = session.ready = True
     session.replay = Mock()
+    session.terminal_task = Mock()
+    session.capture_state = Mock(return_value={
+        'source': 'current', 'arm': {'arm_joint': 0.1}, 'hand': {'hand_joint': 0.2},
+        'bounds': {'arm_joint': [-2, 2], 'hand_joint': [-1, 1]}})
     def reset():
         session.reset_requested.clear()
         session.ready = True
@@ -56,6 +60,30 @@ with tempfile.TemporaryDirectory() as folder:
         panel = window()
         assert panel.replay_choice.get_active_id() == saved[0]
         assert panel.replay_button.get_sensitive()
+        assert panel.camera_button.get_sensitive()
+        assert panel.pickup_button.get_label() == 'Pick up trajectory'
+        assert panel.custom_button.get_sensitive()
+        session.ready = False
+        panel.refresh()
+        assert not panel.custom_button.get_sensitive()
+        session.ready = True
+        panel.refresh()
+        panel.custom_button.clicked()
+        GLib.timeout_add(200, guarded(check_custom))
+        return False
+    def check_custom():
+        panel = window()
+        session.capture_state.assert_called_once_with('current')
+        assert panel.custom_editor.sequence.initial['arm'] == {'arm_joint': 0.1}
+        panel.custom_editor.add_button.clicked()
+        assert len(panel.custom_editor.sequence.tasks) == 1
+        panel.custom_editor.destroy()
+        panel.camera_button.clicked()
+        GLib.timeout_add(200, guarded(check_camera))
+        return False
+    def check_camera():
+        panel = window()
+        session.terminal_task.assert_called_once_with('camera-plan', '--execute')
         session.lock.acquire()
         panel.work(deferred)  # Queue a task behind the lock, then cancel it.
         session.ready = False
@@ -85,4 +113,4 @@ with tempfile.TemporaryDirectory() as folder:
     control_panel.main('sim')
     if errors:
         raise errors[0]
-    print('GTK check passed: Reset stays enabled during tasks; dropdown selection reaches replay checks.')
+    print('GTK check passed: custom editor and camera dispatch; Reset stays enabled; dropdown reaches replay checks.')

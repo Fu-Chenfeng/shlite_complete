@@ -1,0 +1,5 @@
+<library path="lib/libshlite_custom_rviz">
+  <class name="shlite_custom_rviz/MotionPlanning" type="shlite_custom_rviz::GoalDisplay" base_class_type="rviz::Display">
+    <description>MoveIt planning with capture of the editable robot goal.</description>
+  </class>
+</library>

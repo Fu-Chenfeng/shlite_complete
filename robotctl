@@ -14,7 +14,7 @@ import xmlrpc.client
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "app"))
-from project_config import load_config, prepare_simulation, launch_arguments
+from project_config import WORLD_ENV, load_config, prepare_simulation, launch_arguments
 SHADOW_SETUP = "/home/user/projects/shadow_robot/base/devel/setup.bash"
 
 
@@ -91,8 +91,19 @@ def ros_command(cfg, mode, argv, service=None, capture=False):
     service = service or ("sim" if mode == "sim" else "workstation")
     setup = "/opt/ros/noetic/setup.bash" if service == "ur5" else SHADOW_SETUP
     ip = "127.0.0.1" if mode == "sim" else cfg["PC_IP"]
-    command = "set -e; source %s; unset ROS_HOSTNAME; export ROS_IP=%s ROS_MASTER_URI=%s; exec %s" % (
-        shlex.quote(setup), shlex.quote(ip), shlex.quote(uri(cfg, mode)), shlex.join(argv))
+    startup, overlay = '', ''
+    if mode == 'sim':
+        # Compose returns while the entrypoint is still preparing RViz. PID 1
+        # becomes the configured idle sleep only after all setup has finished.
+        startup = ('for attempt in {1..120}; do '
+                   '[ "$(cat /proc/1/comm)" = sleep ] && break; sleep 1; done; '
+                   '[ "$(cat /proc/1/comm)" = sleep ] || '
+                   '{ echo "Simulation container initialization timed out" >&2; exit 1; }; ')
+        overlay = ('if [ -f /tmp/shlite-custom-rviz/devel/setup.bash ]; then '
+                   'source /tmp/shlite-custom-rviz/devel/setup.bash; fi; ')
+    world = 'export %s=%s; ' % (WORLD_ENV, shlex.quote(os.environ[WORLD_ENV])) if WORLD_ENV in os.environ else ''
+    command = "set -e; %ssource %s; %sunset ROS_HOSTNAME; export ROS_IP=%s ROS_MASTER_URI=%s; %sexec %s" % (
+        startup, shlex.quote(setup), overlay, shlex.quote(ip), shlex.quote(uri(cfg, mode)), world, shlex.join(argv))
     flags = ["-T"] if capture or not sys.stdin.isatty() else []
     user = [] if service == "ur5" else ["--user", "user"]
     return compose(cfg, "exec", *flags, *user, service, "bash", "-lc", command, capture=capture)
@@ -241,6 +252,11 @@ def mode_command(cfg, mode, command, extra):
     master(cfg, mode)
     if mode == "sim" and command == "plan":
         ros_command(cfg, mode, ["python3", "/project/app/plan.py", *extra])
+    elif mode == "sim" and command == "camera-plan":
+        ros_command(cfg, mode, ["python3", "/project/app/camera_scan.py", *extra])
+    elif mode == 'sim' and command in ('custom-capture', 'custom-plan'):
+        operation = 'capture' if command == 'custom-capture' else 'plan'
+        ros_command(cfg, mode, ['python3', '/project/app/custom_motion.py', operation, *extra])
     elif mode == "real" and command == "ur5":
         ros_command(cfg, mode, ["roslaunch", "/project/launch/ur5_driver.launch",
                     "robot_ip:=" + cfg["UR5_IP"], "reverse_ip:=" + cfg["UR5_REVERSE_IP"], *extra], service="ur5")
@@ -266,7 +282,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, epilog=(
         "Desktop: shortcuts regenerates project launchers; panel sim/real opens button controls. "
         "Configuration: validate-config checks config.yaml and generates the scene. "
-        "Simulation: sim up/start/plan/check/replay/run/shutdown. "
+        "Simulation: sim up/start/plan/camera-plan/custom-capture/custom-plan/check/replay/run/shutdown. "
         "Hardware: real up/core/nuc/ur5/adapter/moveit/obstacles/check/replay/run/status/shutdown. "
         "Both modes also support shell and logs."))
     parser.add_argument("mode", choices=("init", "gui", "sim", "real", "build", "export-images", "import-images", "verify-images", "panel", "shortcuts", "validate-config"))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Replay a recorded five-stage grasp task in simulation or real control."""
+"""Replay a recorded grasp task or custom sequence in simulation or real control."""
 import argparse
 import math
 import os
@@ -107,15 +107,31 @@ def execute_stages(groups, robot, data, targets, step=False, on_start=lambda: No
 
 
 def main():
+    from custom_trajectory import TASK_VERSION as CUSTOM_VERSION
     parser = argparse.ArgumentParser(description=__doc__)
     modes = parser.add_mutually_exclusive_group()
-    modes.add_argument('--run', action='store_true', help='execute all five stages')
+    modes.add_argument('--run', action='store_true', help='execute all saved stages/tasks')
     modes.add_argument('--step', action='store_true', help='press Enter before each stage')
     modes.add_argument('--check', action='store_true', help='validate files/groups without moving (default)')
     parser.add_argument('--trajectory-root', help='trajectory archive or specific saved run directory')
     args = parser.parse_args(rospy.myargv()[1:])
-    run = (resolve_run(args.trajectory_root, task_version=TASK_VERSION) if args.trajectory_root
-           else configured_run(task_version=TASK_VERSION))
+    versions = (TASK_VERSION, CUSTOM_VERSION)
+    run = (resolve_run(args.trajectory_root, task_version=versions) if args.trajectory_root
+           else configured_run(task_version=versions))
+    import json
+    if json.loads((run / 'task.json').read_text()).get('version') == CUSTOM_VERSION:
+        from custom_motion import replay as replay_custom
+        moveit_commander.roscpp_initialize(sys.argv)
+        rospy.init_node('custom_trajectory_replay', anonymous=True)
+        try:
+            robot = moveit_commander.RobotCommander()
+            groups = {name: moveit_commander.MoveGroupCommander('right_' + name) for name in ('arm', 'hand')}
+            from custom_motion import configure_groups
+            configure_groups(groups, load_config()['planning'])
+            replay_custom(run, robot, groups, step=args.step, execute=args.run or args.step)
+        finally:
+            moveit_commander.roscpp_shutdown()
+        return
     load_task(run)  # Reject old recordings before creating any motion interfaces.
     print('Using five-stage trajectory run: %s' % run, flush=True)
     moveit_commander.roscpp_initialize(sys.argv)

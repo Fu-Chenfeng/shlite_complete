@@ -1,0 +1,635 @@
+{
+  "object_center_world_m": [
+    0.4095629886994361,
+    -0.001482360076314385,
+    0.04895912600057335
+  ],
+  "object_center_local_m": [
+    -0.00043701130056388856,
+    -0.0005128739994266492,
+    0.001482360076314385
+  ],
+  "world_from_drop_rotation": [
+    [
+      1.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      -1.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0
+    ]
+  ],
+  "flange_from_camera_optical": [
+    [
+      -2.3284878872171914e-16,
+      0.10016485118900827,
+      0.9949708551441514,
+      0.0
+    ],
+    [
+      -1.0,
+      -2.3323264271851824e-17,
+      -2.316777584337287e-16,
+      0.0
+    ],
+    [
+      0.0,
+      -0.9949708551441514,
+      0.10016485118900827,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "camera_settings": {
+    "render_batch_size": 16,
+    "cpu_workers": 8,
+    "output_dir": "depth_map",
+    "reference_offset_right_m": 0.035,
+    "distance_m": 0.4,
+    "elevation_degrees": 30.0,
+    "graphics_device_id": 0,
+    "seed": 0,
+    "native_intrinsics": [
+      428.56536865234375,
+      428.56536865234375,
+      426.1269226074219,
+      231.34423828125
+    ],
+    "color_intrinsics": [
+      604.4793090820312,
+      604.3953857421875,
+      324.3471984863281,
+      244.78929138183594
+    ],
+    "depth_to_color_transform": [
+      [
+        0.9999017119407654,
+        0.011544637382030487,
+        0.007954681292176247,
+        0.014773773029446602
+      ],
+      [
+        -0.01156688667833805,
+        0.9999293088912964,
+        0.0027567213401198387,
+        -3.147137613268569e-05
+      ],
+      [
+        -0.007922293618321419,
+        -0.0028484612703323364,
+        0.9999645352363586,
+        0.0004648685280699283
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ],
+    "stereo_baseline_m": 0.05,
+    "disparity_noise_px": 0.08,
+    "disparity_quantization_px": 0.03125,
+    "dropout_fraction": 0.0,
+    "edge_jaggedness_px": 2.0,
+    "visibility_tolerance_m": 0.002,
+    "depth_unit_m": 0.001
+  },
+  "robot": {
+    "initial_z": 0.012,
+    "initial_y": 0.0,
+    "home_joints": {
+      "ra_shoulder_pan_joint": -0.873,
+      "ra_shoulder_lift_joint": -2.094,
+      "ra_elbow_joint": 2.094,
+      "ra_wrist_1_joint": -0.873,
+      "ra_wrist_2_joint": -0.611,
+      "ra_wrist_3_joint": -3.142
+    }
+  },
+  "object": {
+    "grasp_z_offset": 0.015,
+    "enabled": true,
+    "model": "assets/models/tofuprintfinal/model.sdf",
+    "pose": [
+      0.41,
+      0.0,
+      0.034472,
+      1.5707963267948966,
+      0,
+      0
+    ],
+    "static": true,
+    "mass": 0.5,
+    "visual_size": [
+      0.0432183,
+      0.068001,
+      0.0899252
+    ],
+    "collision_size": [
+      0.0432183,
+      0.068001,
+      0.0899252
+    ],
+    "hand_collision": false,
+    "color": [
+      0.88,
+      0.88,
+      0.83,
+      1.0
+    ],
+    "mesh": "assets/models/tofuprintfinal/tofuprintfinal.stl",
+    "mesh_scale": [
+      0.001,
+      0.001,
+      0.001
+    ],
+    "add_to_real_scene": true,
+    "collision_mesh": true
+  },
+  "camera_geometry_modelled": false,
+  "hand_pose": "all zero",
+  "motion_executed": false,
+  "views": [
+    {
+      "index": 0,
+      "azimuth_degrees": 0,
+      "camera_world": [
+        [
+          0.0,
+          0.49999999999999994,
+          -0.8660254037844387,
+          0.7559731502132117
+        ],
+        [
+          1.0,
+          0.0,
+          0.0,
+          -0.03648236007631439
+        ],
+        [
+          0.0,
+          -0.8660254037844387,
+          -0.49999999999999994,
+          0.24895912600057335
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "flange_target": {
+        "x": 0.7559731502132117,
+        "y": -0.03648236007631439,
+        "z": 0.24895912600057335,
+        "qx": -0.30693027629621533,
+        "qy": 3.573417152879815e-17,
+        "qz": 0.9517320029781119,
+        "qw": -1.1080482204057446e-16
+      },
+      "distinct_ik": 4,
+      "valid_ik": 0,
+      "contacts": [
+        [
+          "ground_plane_user",
+          "rh_ffdistal"
+        ],
+        [
+          "ground_plane_user",
+          "rh_mfdistal"
+        ],
+        [
+          "ground_plane_user",
+          "rh_rfdistal"
+        ]
+      ],
+      "candidates": [],
+      "path_found": false,
+      "center_ray_hand_hits": [
+        {
+          "link": "rh_forearm",
+          "distance_m": 0.005046086708246036
+        },
+        {
+          "link": "rh_palm",
+          "distance_m": 0.13450277072123457
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "azimuth_degrees": 72,
+      "camera_world": [
+        [
+          0.9510565162951536,
+          0.1545084971874737,
+          -0.2676165673298175,
+          0.48332263756103266
+        ],
+        [
+          0.30901699437494745,
+          -0.47552825814757677,
+          0.823639103546332,
+          -0.3417535962979703
+        ],
+        [
+          0.0,
+          -0.8660254037844388,
+          -0.49999999999999994,
+          0.24895912600057335
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "flange_target": {
+        "x": 0.48332263756103266,
+        "y": -0.3417535962979703,
+        "z": 0.24895912600057335,
+        "qx": -0.24831180961183633,
+        "qy": 0.18040908988896945,
+        "qz": 0.7699673644998007,
+        "qw": 0.5594140354853103
+      },
+      "distinct_ik": 8,
+      "valid_ik": 0,
+      "contacts": [
+        [
+          "ground_plane_user",
+          "ra_forearm_link"
+        ],
+        [
+          "ground_plane_user",
+          "ra_upper_arm_link"
+        ],
+        [
+          "ground_plane_user",
+          "rh_ffdistal"
+        ],
+        [
+          "ground_plane_user",
+          "rh_mfdistal"
+        ],
+        [
+          "ground_plane_user",
+          "rh_rfdistal"
+        ],
+        [
+          "ra_forearm_link",
+          "ra_wrist_3_link"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_forearm"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_palm"
+        ],
+        [
+          "ra_upper_arm_link",
+          "rh_rfdistal"
+        ],
+        [
+          "ra_upper_arm_link",
+          "rh_rfmiddle"
+        ],
+        [
+          "ra_upper_arm_link",
+          "rh_rfproximal"
+        ]
+      ],
+      "candidates": [],
+      "path_found": false,
+      "center_ray_hand_hits": [
+        {
+          "link": "rh_forearm",
+          "distance_m": 0.005044882069685246
+        },
+        {
+          "link": "rh_palm",
+          "distance_m": 0.13450129118872484
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "azimuth_degrees": 144,
+      "camera_world": [
+        [
+          0.5877852522924732,
+          -0.4045084971874736,
+          0.7006292692220367,
+          0.10873879718038482
+        ],
+        [
+          -0.8090169943749473,
+          -0.29389262614623657,
+          0.5090369604551274,
+          -0.1767815494552422
+        ],
+        [
+          0.0,
+          -0.8660254037844386,
+          -0.49999999999999994,
+          0.24895912600057335
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "flange_target": {
+        "x": 0.10873879718038482,
+        "y": -0.1767815494552422,
+        "z": 0.24895912600057335,
+        "qx": -0.09484667146372862,
+        "qy": 0.2919080393197875,
+        "qz": 0.29410136301074485,
+        "qw": 0.9051509231989718
+      },
+      "distinct_ik": 8,
+      "valid_ik": 0,
+      "contacts": [
+        [
+          "ground_plane_user",
+          "ra_forearm_link"
+        ],
+        [
+          "ground_plane_user",
+          "ra_upper_arm_link"
+        ],
+        [
+          "ground_plane_user",
+          "rh_ffdistal"
+        ],
+        [
+          "ground_plane_user",
+          "rh_mfdistal"
+        ],
+        [
+          "ground_plane_user",
+          "rh_rfdistal"
+        ],
+        [
+          "ra_forearm_link",
+          "ra_wrist_3_link"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_forearm"
+        ],
+        [
+          "ra_upper_arm_link",
+          "rh_forearm"
+        ],
+        [
+          "ra_upper_arm_link",
+          "rh_palm"
+        ]
+      ],
+      "candidates": [],
+      "path_found": false,
+      "center_ray_hand_hits": [
+        {
+          "link": "rh_forearm",
+          "distance_m": 0.005044480445018271
+        },
+        {
+          "link": "rh_palm",
+          "distance_m": 0.13450140625159177
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "azimuth_degrees": 216,
+      "camera_world": [
+        [
+          -0.5877852522924729,
+          -0.40450849718747367,
+          0.7006292692220369,
+          0.14988376484085786
+        ],
+        [
+          -0.8090169943749475,
+          0.2938926261462364,
+          -0.5090369604551271,
+          0.23044801890885966
+        ],
+        [
+          0.0,
+          -0.8660254037844387,
+          -0.49999999999999994,
+          0.24895912600057335
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "flange_target": {
+        "x": 0.14988376484085786,
+        "y": 0.23044801890885966,
+        "z": 0.24895912600057335,
+        "qx": 0.09484667146372863,
+        "qy": 0.2919080393197876,
+        "qz": -0.2941013630107445,
+        "qw": 0.9051509231989721
+      },
+      "distinct_ik": 8,
+      "valid_ik": 0,
+      "contacts": [
+        [
+          "ground_plane_user",
+          "ra_forearm_link"
+        ],
+        [
+          "ground_plane_user",
+          "ra_upper_arm_link"
+        ],
+        [
+          "ground_plane_user",
+          "rh_ffdistal"
+        ],
+        [
+          "ground_plane_user",
+          "rh_mfdistal"
+        ],
+        [
+          "ground_plane_user",
+          "rh_rfdistal"
+        ],
+        [
+          "ra_forearm_link",
+          "ra_wrist_2_link"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_forearm"
+        ]
+      ],
+      "candidates": [],
+      "path_found": false,
+      "center_ray_hand_hits": [
+        {
+          "link": "rh_forearm",
+          "distance_m": 0.005044388731389815
+        },
+        {
+          "link": "rh_palm",
+          "distance_m": 0.13450127329642428
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "azimuth_degrees": 288,
+      "camera_world": [
+        [
+          -0.9510565162951536,
+          0.1545084971874736,
+          -0.2676165673298173,
+          0.5498965937016934
+        ],
+        [
+          0.30901699437494723,
+          0.47552825814757677,
+          -0.8236391035463321,
+          0.3171576865390953
+        ],
+        [
+          0.0,
+          -0.8660254037844388,
+          -0.49999999999999994,
+          0.24895912600057335
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "flange_target": {
+        "x": 0.5498965937016934,
+        "y": 0.3171576865390953,
+        "z": 0.24895912600057335,
+        "qx": 0.24831180961183627,
+        "qy": 0.1804090898889694,
+        "qz": -0.7699673644998005,
+        "qw": 0.5594140354853104
+      },
+      "distinct_ik": 8,
+      "valid_ik": 0,
+      "contacts": [
+        [
+          "ground_plane_user",
+          "ra_forearm_link"
+        ],
+        [
+          "ground_plane_user",
+          "ra_upper_arm_link"
+        ],
+        [
+          "ground_plane_user",
+          "rh_ffdistal"
+        ],
+        [
+          "ground_plane_user",
+          "rh_mfdistal"
+        ],
+        [
+          "ground_plane_user",
+          "rh_rfdistal"
+        ],
+        [
+          "ra_forearm_link",
+          "ra_wrist_3_link"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_ffknuckle"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_forearm"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_palm"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_thbase"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_thdistal"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_thhub"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_thmiddle"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_thproximal"
+        ],
+        [
+          "ra_upper_arm_link",
+          "rh_ffdistal"
+        ],
+        [
+          "ra_upper_arm_link",
+          "rh_ffmiddle"
+        ],
+        [
+          "ra_upper_arm_link",
+          "rh_ffproximal"
+        ],
+        [
+          "ra_upper_arm_link",
+          "rh_thdistal"
+        ]
+      ],
+      "candidates": [],
+      "path_found": false,
+      "center_ray_hand_hits": [
+        {
+          "link": "rh_forearm",
+          "distance_m": 0.005044476464327546
+        },
+        {
+          "link": "rh_palm",
+          "distance_m": 0.13450141724507023
+        }
+      ]
+    }
+  ],
+  "complete_sequence": false
+}

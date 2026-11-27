@@ -21,6 +21,12 @@ models="$base/src/common_resources/sr_description_common/models"
 mkdir -p "$models"
 cp -a /project/assets/models/. "$models/"
 cp /project/config/multi_robot_move_group_states.yaml "$multi/config/multi_robot_move_group_states.yaml"
+if [[ "${SESSION_MODE:-}" == sim ]]; then
+    mkdir -p "$base/src/sr_interface/sr_robot_launch/scripts"
+    ln -sfn /project/app/camera_visualization.py "$base/src/sr_interface/sr_robot_launch/scripts/project_camera_visualization.py"
+    python3 /project/app/camera_visualization.py --configure-rviz "$multi/launch/moveit.rviz"
+    bash /project/docker/build-custom-rviz.sh "$multi/launch/moveit.rviz"
+fi
 mkdir -p /home/user/.ros /home/user/.gazebo /home/user/.config
 for folder in /home/user/.ros /home/user/.gazebo /home/user/.config "$multi/config" "$multi/default_warehouse_mongo_db"; do
     if [[ -d "$folder" ]]; then chown -R user:user "$folder"; fi

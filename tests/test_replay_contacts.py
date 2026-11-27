@@ -1,7 +1,9 @@
 """Replay collision overrides must be scoped to execution, including failures."""
 from contextlib import ExitStack
+import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
@@ -48,7 +50,9 @@ class ReplayContactsTest(unittest.TestCase):
                 stack.enter_context(patch.object(replay.rospy, 'myargv', return_value=['replay', '--check' if check_only else '--run']))
                 for name in ('roscpp_initialize', 'roscpp_shutdown', 'RobotCommander', 'MoveGroupCommander'):
                     stack.enter_context(patch.object(replay.moveit_commander, name))
-                stack.enter_context(patch.object(replay, 'configured_run', return_value=Path('/recording')))
+                recording = Path(stack.enter_context(tempfile.TemporaryDirectory()))
+                (recording / 'task.json').write_text(json.dumps({'version': replay.TASK_VERSION}))
+                stack.enter_context(patch.object(replay, 'configured_run', return_value=recording))
                 stack.enter_context(patch.object(replay, 'load_task', return_value=task))
                 stack.enter_context(patch.object(replay, 'load_recording', return_value=(task, {}, {})))
                 stack.enter_context(patch.object(replay, 'thumb_preparation_joints', return_value=('rh_THJ5',)))

@@ -40,6 +40,7 @@ def main(mode='sim'):
             self.operation_generation = 0
             self.failed_processes = set()
             self.buttons = []
+            self.custom_editor = None
             outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
             self.add(outer)
             title = Gtk.Label(xalign=0)
@@ -50,20 +51,40 @@ def main(mode='sim'):
             label = Gtk.Label(label=note, xalign=0)
             label.set_line_wrap(True)
             outer.pack_start(label, False, False, 0)
+            from project_config import world_choices, world_label
+            worlds, selected_world = world_choices(ROOT)
+            world_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            world_row.pack_start(Gtk.Label(label='World:'), False, False, 0)
+            self.world_choice = Gtk.ComboBoxText()
+            self.world_choice.set_hexpand(True)
+            self.world_choice.set_tooltip_text('Choose the simulation / MoveIt world before starting. Applies to this panel’s session only.')
+            for world in worlds:
+                self.world_choice.append(world, world_label(world))
+            if selected_world is not None:
+                self.world_choice.set_active_id(selected_world)
+            self.session.world = self.world_choice.get_active_id()
+            self.world_choice.connect('changed', self.world_changed)
+            world_row.pack_start(self.world_choice, True, True, 0)
+            outer.pack_start(world_row, False, False, 0)
             grid = Gtk.Grid(column_spacing=10, row_spacing=10)
             outer.pack_start(grid, False, False, 0)
             self.start_button = self.button('Start simulation' if mode == 'sim' else 'Start real hardware',
                                             self.session.start, grid, 0, 0, needs_ready=False)
             self.start_button.get_style_context().add_class('suggested-action')
             if mode == 'sim':
-                self.button('Plan, execute & save', lambda: self.session.terminal_task('plan'), grid, 1, 0,
+                self.pickup_button = self.button('Pick up trajectory', lambda: self.session.terminal_task('plan'), grid, 1, 0,
                             tooltip='Plans all five stages and saves a new run named after the GraspIt file (or timestamp for manual mode).')
                 self.reset_button = Gtk.Button(label='Reset simulation')
                 self.reset_button.connect('clicked', self.reset)
                 self.reset_button.set_tooltip_text('Cancel the current task and restart simulation at its configured starting state.')
                 grid.attach(self.reset_button, 0, 2, 1, 1)
+                self.camera_button = self.button('5 views + home',
+                            lambda: self.session.terminal_task('camera-plan', '--execute'), grid, 1, 2,
+                            tooltip='Plan the complete camera tour, execute in simulation, and save. Uses camera_scan in config.yaml.')
+                self.custom_button = self.button('Custom trajectory', self.open_custom_trajectory, grid, 2, 2,
+                            tooltip='Build a sequence of arm/hand joint goals using captured RViz states.', background=False)
             self.check_button = self.button('Check saved task', lambda: self.saved_task('check'), grid, 0, 1, background=False)
-            self.replay_button = self.button('Replay five-stage task…', lambda: self.saved_task('replay'), grid, 1, 1,
+            self.replay_button = self.button('Replay saved task…', lambda: self.saved_task('replay'), grid, 1, 1,
                         tooltip='Opens a terminal. Press Enter before each stage; q quits between stages.', background=False)
             self.button('Status', lambda: self.session.run(mode, 'status'), grid, 2, 1, needs_ready=False)
             edit = Gtk.Button(label='Edit config.yaml')
@@ -116,6 +137,7 @@ def main(mode='sim'):
             for button, needs_ready in self.buttons:
                 button.set_sensitive(idle and (self.session.ready or not needs_ready))
             self.start_button.set_sensitive(idle and not self.session.active)
+            self.world_choice.set_sensitive(idle and not self.session.active)
             if mode == 'sim':
                 self.reset_button.set_sensitive(not self.stopping and not self.resetting)
             if hasattr(self, 'replay_choice'):
@@ -130,6 +152,21 @@ def main(mode='sim'):
                                              if mode == 'sim' else
                                              'Finish or quit the task and close its terminal before shutdown.'
                                              if self.session.task_active else None)
+            if self.custom_editor is not None and not self.custom_editor.closed:
+                self.custom_editor.refresh()
+
+        def world_changed(self, _):
+            self.session.world = self.world_choice.get_active_id()
+
+        def open_custom_trajectory(self):
+            if not self.session.ready or self.busy or self.stopping or self.resetting:
+                return
+            if self.custom_editor is None or self.custom_editor.closed:
+                from custom_trajectory_editor import create_editor
+                self.custom_editor = create_editor(self, Gtk, GLib)
+            self.custom_editor.show_all()
+            self.custom_editor.present()
+            self.custom_editor.refresh()
 
         def refresh_runs(self):
             choices = replay_run_choices(ROOT / 'trajectories')
@@ -169,7 +206,7 @@ def main(mode='sim'):
             self.view.scroll_to_iter(self.buffer.get_end_iter(), 0, False, 0, 1)
             return False
 
-        def work(self, action):
+        def work(self, action, on_success=None):
             if self.busy or self.stopping or self.resetting:
                 return
             self.busy = True
@@ -179,22 +216,23 @@ def main(mode='sim'):
 
             def run():
                 message = None
+                result = None
                 try:
                     with self.session.lock:
                         if generation != self.operation_generation:
                             raise Cancelled('Queued task cancelled by reset or shutdown.')
                         self.session.check_cancelled()
-                        action()
+                        result = action()
                 except Cancelled as exc:
                     self.log(str(exc))
                 except Exception as exc:
                     message = str(exc)
                     self.log('ERROR: ' + message)
-                GLib.idle_add(self.finished, message, generation)
+                GLib.idle_add(self.finished, message, generation, on_success, result)
 
             threading.Thread(target=run, daemon=True).start()
 
-        def finished(self, error, generation):
+        def finished(self, error, generation, on_success=None, result=None):
             if generation != self.operation_generation:
                 return False
             self.busy = False
@@ -203,6 +241,10 @@ def main(mode='sim'):
             elif not self.stopping and not self.resetting:
                 self.status.set_text('Session ready.' if self.session.ready else 'Session stopped / ready to start.')
             self.refresh()
+            if error and self.custom_editor is not None and not self.custom_editor.closed:
+                self.custom_editor.status.set_text(error)
+            if not error and on_success is not None and not self.stopping and not self.resetting:
+                on_success(result)
             return False
 
         def reset(self, _):

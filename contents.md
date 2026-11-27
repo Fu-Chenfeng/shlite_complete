@@ -4,6 +4,8 @@ For installation and a quick start, see [README.md](README.md).
 
 - [Configuration and launchers](#configuration-and-launchers)
 - [Simulation](#simulation)
+- [Custom trajectories](#custom-trajectories)
+- [Five-view camera tour](#five-view-camera-tour)
 - [Real arm and hand](#real-arm--hand)
 - [Shared trajectories and sequence](#shared-trajectories-and-sequence)
 - [Project contents](#project-contents)
@@ -53,10 +55,18 @@ with **`Real-Control.sh`**. These executable launchers ship inside the project a
 so they work after copying or moving the folder without installation or path
 updates. Each opens a native control panel with
 Start, task check, step-by-step Replay, Status, Edit config.yaml and Shut down
-buttons and a Saved trajectories dropdown. Simulation also offers Plan, execute
-& save and Reset simulation. No commands need to be
+buttons and a Saved trajectories dropdown. Simulation also offers Pick up
+trajectory and Reset simulation. No commands need to be
 typed for everyday sessions. The optional `./robotctl shortcuts` command only
 regenerates the launchers inside the project; it writes no external shortcuts.
+
+Both panels have a **World** dropdown with **tofu**, **tofu no collision**,
+**tofu cell**, and **no object**. The **no object** world uses the tofu scene
+without its tofu object, in both Gazebo and the real MoveIt scene.
+Choose before starting: simulation loads that Gazebo
+world, and real control uses its environment in the MoveIt scene. The choice
+is kept for that panel's session, including simulation resets; it is not stored
+in `config.yaml`. Shut down the session to choose another world.
 
 Start real hardware launches ROS core, the NUC hand loop, UR5 driver, adapter and
 MoveIt in order, waiting for readiness. Keep the hand clear during calibration;
@@ -117,9 +127,115 @@ Shutdown, from another terminal:
 ./robotctl sim shutdown
 ```
 
-The default world is `assets/worlds/open.world`, copied from your usual
+The default **tofu** world is `assets/worlds/open.world`, copied from your usual
 `my_world_no_ob.world`. To use the cell-obstacle variant:
 `./robotctl sim start world:=/project/assets/worlds/cell.world`.
+
+## Custom trajectories
+
+Start simulation, wait for readiness, then click **Custom trajectory**.
+
+1. On the left, **+** appends a task and **−** deletes the selected task. A new
+   task copies the previous task's joint angles. The first task uses the live
+   robot state when the editor opens.
+2. On the right, **Capture RViz state** records the editable goal pose shown in
+   RViz's MotionPlanning display, including both arm and hand joints. Set the
+   arm/hand goals using RViz's interactive markers or Joints tab before capture.
+   **Capture live state** records the simulated robot's actual joint feedback.
+   Select a recording to inspect its angles.
+3. Double-click a task to open its joint editor. All angles are in **degrees**,
+   with joint limits shown in tooltips. Select a recorded state, then click
+   **Read hand goal** or **Read arm goal** to copy only that group's angles.
+   Edit any angle manually and click **Apply**. Choose whether the task moves
+   the arm before the hand or the hand before the arm.
+4. Set the trajectory name, then click **Plan, execute & save**. The entire
+   sequence is planned from consecutive endpoints before execution starts.
+   **Plan & save** saves the planned sequence without moving the robot.
+
+The default name is `custom_YYYY-MM-DD_HH-MM-SS` in Tokyo time. Runs are saved
+under `trajectories/<name>/`, with suffixes to preserve existing runs. Each run
+contains arm/hand trajectories, saved hand targets and a `task.json` with the
+task sequence, captured states and planning settings. Custom runs appear in the
+main **Saved trajectories** dropdown and use the same **Check saved task** and
+**Replay saved task…** controls; replay prompts once per custom task.
+
+Restart an existing simulation after installing this feature to load the RViz
+goal bridge. The bridge builds inside the simulation container at startup.
+
+Command-line equivalents:
+
+```bash
+./robotctl sim custom-capture --source rviz
+./robotctl sim custom-capture --source current
+./robotctl sim custom-plan --sequence /project/path/to/sequence.json --execute
+```
+
+Sequence JSON uses `version: "custom_v1"`, `name`, and a nonempty `tasks` list.
+Each task has `name`, `order` (`arm_hand` or `hand_arm`), and complete `arm` and
+`hand` joint dictionaries in **radians**. Saved `task.json` files can also serve
+as sequence inputs. Collision checking uses the current MoveIt scene.
+
+## Five-view camera tour
+
+In the simulation panel, click **5 views + home**. It plans the entire sequence
+before moving, then executes and saves it:
+
+1. Close the hand to the camera fist posture.
+2. Move the arm home, then visit camera azimuths **0°, 72°, 144°, 216°, 288°** in order.
+3. Return the arm home, keeping the fist closed throughout all arm movements.
+
+The fist is defined by `camera_scan.fist_joint_angles`, independently of the
+object's grasp settings. The planner checks the closing motion first, then
+uses its end state for every arm IK and path check. The complete sequence is
+planned before execution begins.
+
+All segments use collision checking, including hand-object checking even when
+`object.hand_collision` is false. Several IK configurations are tried at each
+view; if a later segment or return home fails, the planner tries another branch.
+If no complete route is found within the search budget, it stops before motion.
+Reset and shutdown remain available during the task.
+
+`camera_scan` in `config.yaml` controls the orbit distance (0.4 m), elevation
+(30°), yaw, image roll, pause at each view, IK attempts and planning budget.
+`roll_degrees: 180` turns each view upside down around its optical axis while
+preserving the optical center and viewing direction. Set it to `0` for the
+original DefMapSim image orientation. Camera calibration
+is relative to **ra_flange**: `mount_translation` is the depth optical center;
+`mount_forward` and `mount_up` define its viewing direction and roll. The default
+assumes the optical center at `[-0.02, -0.08, 0]` m in flange coordinates,
+with the camera facing along the hand. This moves the previous mount 2 cm
+toward the wrist and 2 cm farther to the side, preserving the exact 0.4 m
+camera targets and 180° image roll. The
+`object_center_local` default is the tofu model's convex-hull center in metres;
+change it when changing the model. The world-space target includes the object's
+pose and `grasp_z_offset`. `reference_offset_right` reproduces DefMapSim's calibrated
+3.5 cm offset from its camera reference to the depth optical center.
+
+The complete fist-held tour and return home have been checked at these exact
+targets. See [mount validation](docs/diagnostics/WRIST_CAMERA_EXACT_MOUNT.md)
+for the planned endpoint errors and center-sightline checks.
+
+After pressing **5 views + home**, five transparent yellow cones mark the camera views in Gazebo and RViz's
+**Camera views** display. Each pointed tip is at the depth optical center;
+its circular base extends 12 cm along the camera viewing direction, with a
+4 cm radius. These are direction indicators, not calibrated camera fields of
+view, and have no collision geometry. Planning updates them to match the
+current targets. The cones stay hidden at simulation startup and are cleared
+on reset.
+
+Runs are stored as `trajectories/camera_views`, `camera_views_001`, and so on,
+with arm/hand trajectory files and `camera_scan.json` containing the ordered
+motions, camera poses and settings. They are marked separately in the saved-run
+list and are not passed to the five-stage grasp replay. This feature positions
+the assumed camera; **it does not yet render or record depth images**, and no
+camera/bracket collision geometry has been added.
+
+Optional terminal equivalents:
+
+```bash
+./robotctl sim camera-plan --execute  # Same as the button.
+./robotctl sim camera-plan            # Plan and save without moving.
+```
 
 ## Real arm + hand
 
@@ -186,7 +302,8 @@ local launchers and SSH clients.
 
 ## Shared trajectories and sequence
 
-Both modes use **`app/replay.py`**, **`trajectories/`**, and the same sequence:
+Both modes use **`app/replay.py`** and **`trajectories/`**. Grasp recordings use
+the following sequence; custom recordings use their saved task order:
 
 1. Move `rh_THJ5`, `rh_THJ4`, and each finger's J4 to their full grasp targets;
    move other hand joints toward their targets by `planning.approach_hand_fraction`

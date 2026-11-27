@@ -1,12 +1,21 @@
 """Shared configuration and generated Gazebo scene. No ROS dependencies."""
 import copy
 import math
+import os
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_WORLD = 'assets/worlds/open.world'
+WORLD_ENV = 'SHLITE_WORLD'
+WORLD_LABELS = {
+    'assets/worlds/open.world': 'tofu',
+    'assets/worlds/open_no_collision.world': 'tofu no collision',
+    'assets/worlds/cell.world': 'tofu cell',
+    'assets/worlds/no_object.world': 'no object',
+}
 
 
 def inside(path, parent):
@@ -28,6 +37,22 @@ def project_path(value, root=ROOT):
     if not inside(path, root.resolve()) or not path.is_file():
         raise ValueError("Project file does not exist inside the project: %s" % value)
     return path
+
+
+def world_choices(root=ROOT):
+    """List worlds for the panels without reading or writing configuration."""
+    available = {path.relative_to(root).as_posix() for path in (root / 'assets/worlds').glob('*.world')}
+    paths = [path for path in WORLD_LABELS if path in available] + sorted(available - WORLD_LABELS.keys())
+    selected = DEFAULT_WORLD if DEFAULT_WORLD in paths else paths[0] if paths else None
+    return paths, selected
+
+
+def world_label(world):
+    return WORLD_LABELS.get(world, Path(world).stem.replace('_', ' '))
+
+
+def world_without_object(world, root=ROOT):
+    return project_path(world, root) == (root / 'assets/worlds/no_object.world').resolve()
 
 
 def number(value, label, positive=False):
@@ -53,6 +78,7 @@ def load_config(root=ROOT):
     try:
         config = yaml.safe_load((root / 'config.yaml').read_text())
         network, sim, robot, obj = (config[key] for key in ('network', 'simulation', 'robot', 'object'))
+        sim['world'] = os.environ.get(WORLD_ENV, DEFAULT_WORLD)
         for key in ('pc_ip', 'nuc_ip', 'nuc_user', 'nuc_container', 'ssh_key', 'ur5_ip'):
             if not isinstance(network[key], str) or not network[key].strip():
                 raise ValueError('network.%s must be a nonempty string' % key)
@@ -116,7 +142,11 @@ def load_config(root=ROOT):
                 raise ValueError('grasp.capture_file must be a nonempty filename')
             config['grasp'] = resolve_capture(grasp, obj['pose'], project_path(filename, root))
         validate_planning(config['planning'], config['grasp'])
+        from camera_views import settings as camera_settings
+        camera_settings(config)
         object_model(config, root)
+        if world_without_object(sim['world'], root):
+            obj['enabled'] = False
         return config
     except (KeyError, TypeError, AttributeError, OSError, yaml.YAMLError, ValueError, ET.ParseError) as exc:
         raise ValueError('Invalid config.yaml: %s' % exc) from exc
@@ -245,6 +275,9 @@ def world_model_names(config, world=None, root=ROOT):
 
 def prepare_simulation(config, world=None, root=ROOT):
     """Inline configured models so vendor launch model paths cannot override them."""
+    if world_without_object(world or config['simulation']['world'], root):
+        config = copy.deepcopy(config)
+        config['object']['enabled'] = False
     tree = ET.parse(project_path(world or config['simulation']['world'], root))
     scene = tree.getroot().find('world')
     if scene is None:

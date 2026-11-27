@@ -7,10 +7,22 @@ from unittest.mock import Mock, patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'app'))
 import add_cell_obstacles as obstacles
-from project_config import load_config, object_pose
+from project_config import WORLD_ENV, load_config, object_pose
 
 
 class RealSceneTest(unittest.TestCase):
+    def test_no_object_world_removes_tofu_from_real_scene_and_keeps_ground(self):
+        scene = Mock()
+        with patch.dict('os.environ', {WORLD_ENV: 'assets/worlds/no_object.world'}), \
+                patch.object(obstacles.rospy, 'init_node'), \
+                patch.object(obstacles.moveit_commander, 'roscpp_initialize'), \
+                patch.object(obstacles.moveit_commander, 'roscpp_shutdown'), \
+                patch.object(obstacles.moveit_commander, 'PlanningSceneInterface', return_value=scene):
+            obstacles.main()
+        self.assertEqual([call.args[0] for call in scene.add_box.call_args_list], ['ground_plane_user'])
+        self.assertIn('rect_object', [call.args[0] for call in scene.remove_world_object.call_args_list])
+        scene.add_mesh.assert_not_called()
+
     def test_world_selection_adds_matching_boxes_and_removes_stale_walls(self):
         config = load_config()
         all_names = {item['name'] for item in config['environment']}

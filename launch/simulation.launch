@@ -25,4 +25,5 @@
     <arg name="start_home" value="true"/>
     <arg name="home_angles" value="$(arg home_angles)"/>
   </include>
+  <node name="camera_view_scene" pkg="sr_robot_launch" type="project_camera_visualization.py" output="screen"/>
 </launch>

@@ -1,0 +1,750 @@
+{
+  "object_center_world_m": [
+    0.4095629886994361,
+    -0.001482360076314385,
+    0.04895912600057335
+  ],
+  "object_center_local_m": [
+    -0.00043701130056388856,
+    -0.0005128739994266492,
+    0.001482360076314385
+  ],
+  "world_from_drop_rotation": [
+    [
+      1.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      -1.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0
+    ]
+  ],
+  "flange_from_camera_optical": [
+    [
+      -2.3284878872171914e-16,
+      0.10016485118900827,
+      0.9949708551441514,
+      1.397092732330315e-17
+    ],
+    [
+      -1.0,
+      -2.3323264271851824e-17,
+      -2.316777584337287e-16,
+      0.06
+    ],
+    [
+      0.0,
+      -0.9949708551441514,
+      0.10016485118900827,
+      -0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "camera_settings": {
+    "render_batch_size": 16,
+    "cpu_workers": 8,
+    "output_dir": "depth_map",
+    "reference_offset_right_m": 0.035,
+    "distance_m": 0.4,
+    "elevation_degrees": 30.0,
+    "graphics_device_id": 0,
+    "seed": 0,
+    "native_intrinsics": [
+      428.56536865234375,
+      428.56536865234375,
+      426.1269226074219,
+      231.34423828125
+    ],
+    "color_intrinsics": [
+      604.4793090820312,
+      604.3953857421875,
+      324.3471984863281,
+      244.78929138183594
+    ],
+    "depth_to_color_transform": [
+      [
+        0.9999017119407654,
+        0.011544637382030487,
+        0.007954681292176247,
+        0.014773773029446602
+      ],
+      [
+        -0.01156688667833805,
+        0.9999293088912964,
+        0.0027567213401198387,
+        -3.147137613268569e-05
+      ],
+      [
+        -0.007922293618321419,
+        -0.0028484612703323364,
+        0.9999645352363586,
+        0.0004648685280699283
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ],
+    "stereo_baseline_m": 0.05,
+    "disparity_noise_px": 0.08,
+    "disparity_quantization_px": 0.03125,
+    "dropout_fraction": 0.0,
+    "edge_jaggedness_px": 2.0,
+    "visibility_tolerance_m": 0.002,
+    "depth_unit_m": 0.001
+  },
+  "robot": {
+    "initial_z": 0.012,
+    "initial_y": 0.0,
+    "home_joints": {
+      "ra_shoulder_pan_joint": -0.873,
+      "ra_shoulder_lift_joint": -2.094,
+      "ra_elbow_joint": 2.094,
+      "ra_wrist_1_joint": -0.873,
+      "ra_wrist_2_joint": -0.611,
+      "ra_wrist_3_joint": -3.142
+    }
+  },
+  "object": {
+    "grasp_z_offset": 0.015,
+    "enabled": true,
+    "model": "assets/models/tofuprintfinal/model.sdf",
+    "pose": [
+      0.41,
+      0.0,
+      0.034472,
+      1.5707963267948966,
+      0,
+      0
+    ],
+    "static": true,
+    "mass": 0.5,
+    "visual_size": [
+      0.0432183,
+      0.068001,
+      0.0899252
+    ],
+    "collision_size": [
+      0.0432183,
+      0.068001,
+      0.0899252
+    ],
+    "hand_collision": false,
+    "color": [
+      0.88,
+      0.88,
+      0.83,
+      1.0
+    ],
+    "mesh": "assets/models/tofuprintfinal/tofuprintfinal.stl",
+    "mesh_scale": [
+      0.001,
+      0.001,
+      0.001
+    ],
+    "add_to_real_scene": true,
+    "collision_mesh": true
+  },
+  "camera_geometry_modelled": false,
+  "hand_pose": "folded",
+  "hand_joints": {
+    "rh_FFJ4": 0.3490658503988659,
+    "rh_FFJ3": 1.5707963267948966,
+    "rh_FFJ2": 0.13374999999999998,
+    "rh_FFJ1": 0.10699999999999998,
+    "rh_MFJ4": 0,
+    "rh_MFJ3": 1.5707963267948966,
+    "rh_MFJ2": 0.3662500000000002,
+    "rh_MFJ1": 0.29300000000000015,
+    "rh_RFJ4": -0.3490658503988659,
+    "rh_RFJ3": 1.5707963267948966,
+    "rh_RFJ2": 0.5650763457740762,
+    "rh_RFJ1": 0.452061076619261,
+    "rh_THJ5": -0.7838121508541545,
+    "rh_THJ4": 1.22173,
+    "rh_THJ2": 0.5855938693706022,
+    "rh_THJ1": 0.8210147500487792
+  },
+  "motion_executed": false,
+  "views": [
+    {
+      "index": 0,
+      "azimuth_degrees": 0,
+      "camera_world": [
+        [
+          0.0,
+          0.49999999999999994,
+          -0.8660254037844387,
+          0.7559731502132117
+        ],
+        [
+          1.0,
+          0.0,
+          0.0,
+          -0.03648236007631439
+        ],
+        [
+          0.0,
+          -0.8660254037844387,
+          -0.49999999999999994,
+          0.24895912600057335
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "flange_target": {
+        "x": 0.7559731502132117,
+        "y": 0.023517639923685607,
+        "z": 0.24895912600057335,
+        "qx": -0.30693027629621533,
+        "qy": 3.573417152879815e-17,
+        "qz": 0.9517320029781119,
+        "qw": -1.1080482204057446e-16
+      },
+      "distinct_ik": 4,
+      "valid_ik": 4,
+      "contacts": [],
+      "candidates": [
+        {
+          "ra_shoulder_pan_joint": -0.10442379928020151,
+          "ra_shoulder_lift_joint": -0.49107321050899,
+          "ra_elbow_joint": 0.3061143840406932,
+          "ra_wrist_1_joint": -0.4415686497667418,
+          "ra_wrist_2_joint": -1.655492779845547,
+          "ra_wrist_3_joint": -0.06115461834397248
+        },
+        {
+          "ra_shoulder_pan_joint": -0.10442220112398834,
+          "ra_shoulder_lift_joint": -0.19736612101578466,
+          "ra_elbow_joint": -0.3060096207981526,
+          "ra_wrist_1_joint": -0.1231473572359949,
+          "ra_wrist_2_joint": -1.655491391741652,
+          "ra_wrist_3_joint": -0.06115127395315343
+        },
+        {
+          "ra_shoulder_pan_joint": -2.980017104926985,
+          "ra_shoulder_lift_joint": -2.9469155909177402,
+          "ra_elbow_joint": 0.3113813364872558,
+          "ra_wrist_1_joint": -3.0174900265903504,
+          "ra_wrist_2_joint": 1.701733062124654,
+          "ra_wrist_3_joint": -6.188244139660941
+        },
+        {
+          "ra_shoulder_pan_joint": -2.98001709946302,
+          "ra_shoulder_lift_joint": -2.648101712123681,
+          "ra_elbow_joint": -0.3114068824002125,
+          "ra_wrist_1_joint": -2.6935157108550345,
+          "ra_wrist_2_joint": 1.7017330193362221,
+          "ra_wrist_3_joint": -6.1882440246398485
+        }
+      ],
+      "path_found": true,
+      "path_points": 27,
+      "from_joints": {
+        "ra_shoulder_pan_joint": -0.873,
+        "ra_shoulder_lift_joint": -2.094,
+        "ra_elbow_joint": 2.094,
+        "ra_wrist_1_joint": -0.873,
+        "ra_wrist_2_joint": -0.611,
+        "ra_wrist_3_joint": -3.142
+      },
+      "to_joints": {
+        "ra_shoulder_pan_joint": -0.10442379928020151,
+        "ra_shoulder_lift_joint": -0.49107321050899,
+        "ra_elbow_joint": 0.3061143840406932,
+        "ra_wrist_1_joint": -0.4415686497667418,
+        "ra_wrist_2_joint": -1.655492779845547,
+        "ra_wrist_3_joint": -0.06115461834397248
+      },
+      "center_ray_hand_hits": [
+        {
+          "link": "rh_forearm",
+          "distance_m": 0.005044940803255848
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "azimuth_degrees": 72,
+      "camera_world": [
+        [
+          0.9510565162951536,
+          0.1545084971874737,
+          -0.2676165673298175,
+          0.48332263756103266
+        ],
+        [
+          0.30901699437494745,
+          -0.47552825814757677,
+          0.823639103546332,
+          -0.3417535962979703
+        ],
+        [
+          0.0,
+          -0.8660254037844388,
+          -0.49999999999999994,
+          0.24895912600057335
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "flange_target": {
+        "x": 0.5403860285387418,
+        "y": -0.3232125766354735,
+        "z": 0.24895912600057335,
+        "qx": -0.24831180961183633,
+        "qy": 0.18040908988896945,
+        "qz": 0.7699673644998007,
+        "qw": 0.5594140354853103
+      },
+      "distinct_ik": 8,
+      "valid_ik": 3,
+      "contacts": [
+        [
+          "ground_plane_user",
+          "ra_forearm_link"
+        ],
+        [
+          "ground_plane_user",
+          "ra_upper_arm_link"
+        ],
+        [
+          "ra_forearm_link",
+          "ra_wrist_3_link"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_forearm"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_palm"
+        ]
+      ],
+      "candidates": [
+        {
+          "ra_shoulder_pan_joint": -0.7644109171745643,
+          "ra_shoulder_lift_joint": -0.9976765120590418,
+          "ra_elbow_joint": 1.2237002828825834,
+          "ra_wrist_1_joint": -0.9109451611992352,
+          "ra_wrist_2_joint": -1.177161996759748,
+          "ra_wrist_3_joint": 0.3036083754001062
+        },
+        {
+          "ra_shoulder_pan_joint": 2.69893410689564,
+          "ra_shoulder_lift_joint": -2.1278862918164805,
+          "ra_elbow_joint": -1.2702507770635487,
+          "ra_wrist_1_joint": -2.0760136296391614,
+          "ra_wrist_2_joint": -4.081275432949319,
+          "ra_wrist_3_joint": 0.5539968057406384
+        },
+        {
+          "ra_shoulder_pan_joint": -0.7644109535962738,
+          "ra_shoulder_lift_joint": -0.5782908843203672,
+          "ra_elbow_joint": 0.8618019871753504,
+          "ra_wrist_1_joint": 2.173160146640021,
+          "ra_wrist_2_joint": 1.1771620385026087,
+          "ra_wrist_3_joint": -2.8379842982556935
+        }
+      ],
+      "path_found": true,
+      "path_points": 11,
+      "from_joints": {
+        "ra_shoulder_pan_joint": -0.10442379928020151,
+        "ra_shoulder_lift_joint": -0.49107321050899,
+        "ra_elbow_joint": 0.3061143840406932,
+        "ra_wrist_1_joint": -0.4415686497667418,
+        "ra_wrist_2_joint": -1.655492779845547,
+        "ra_wrist_3_joint": -0.06115461834397248
+      },
+      "to_joints": {
+        "ra_shoulder_pan_joint": -0.7644109171745643,
+        "ra_shoulder_lift_joint": -0.9976765120590418,
+        "ra_elbow_joint": 1.2237002828825834,
+        "ra_wrist_1_joint": -0.9109451611992352,
+        "ra_wrist_2_joint": -1.177161996759748,
+        "ra_wrist_3_joint": 0.3036083754001062
+      },
+      "center_ray_hand_hits": [
+        {
+          "link": "rh_forearm",
+          "distance_m": 0.005044472926332069
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "azimuth_degrees": 144,
+      "camera_world": [
+        [
+          0.5877852522924732,
+          -0.4045084971874736,
+          0.7006292692220367,
+          0.10873879718038482
+        ],
+        [
+          -0.8090169943749473,
+          -0.29389262614623657,
+          0.5090369604551274,
+          -0.1767815494552422
+        ],
+        [
+          0.0,
+          -0.8660254037844386,
+          -0.49999999999999994,
+          0.24895912600057335
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "flange_target": {
+        "x": 0.1440059123179332,
+        "y": -0.225322569117739,
+        "z": 0.24895912600057335,
+        "qx": -0.09484667146372862,
+        "qy": 0.2919080393197875,
+        "qz": 0.29410136301074485,
+        "qw": 0.9051509231989718
+      },
+      "distinct_ik": 8,
+      "valid_ik": 3,
+      "contacts": [
+        [
+          "ground_plane_user",
+          "ra_forearm_link"
+        ],
+        [
+          "ground_plane_user",
+          "ra_upper_arm_link"
+        ],
+        [
+          "ra_forearm_link",
+          "ra_wrist_2_link"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_forearm"
+        ]
+      ],
+      "candidates": [
+        {
+          "ra_shoulder_pan_joint": -1.6442762338974501,
+          "ra_shoulder_lift_joint": -2.0226724183837845,
+          "ra_elbow_joint": 2.3423435232860896,
+          "ra_wrist_1_joint": -1.1594072390704229,
+          "ra_wrist_2_joint": -0.9023145825801394,
+          "ra_wrist_3_joint": 0.6047254419600447
+        },
+        {
+          "ra_shoulder_pan_joint": -1.6442840168962212,
+          "ra_shoulder_lift_joint": 0.13047290158966837,
+          "ra_elbow_joint": -2.342345148353872,
+          "ra_wrist_1_joint": 1.3721415234236078,
+          "ra_wrist_2_joint": -0.9023211868794121,
+          "ra_wrist_3_joint": 0.6047189583218939
+        },
+        {
+          "ra_shoulder_pan_joint": 2.299825820993608,
+          "ra_shoulder_lift_joint": -1.1598828189042294,
+          "ra_elbow_joint": -2.537122938087731,
+          "ra_wrist_1_joint": -0.8766136702520999,
+          "ra_wrist_2_joint": -3.772529102577307,
+          "ra_wrist_3_joint": 1.742069392833403
+        }
+      ],
+      "path_found": true,
+      "path_points": 13,
+      "from_joints": {
+        "ra_shoulder_pan_joint": -0.7644109171745643,
+        "ra_shoulder_lift_joint": -0.9976765120590418,
+        "ra_elbow_joint": 1.2237002828825834,
+        "ra_wrist_1_joint": -0.9109451611992352,
+        "ra_wrist_2_joint": -1.177161996759748,
+        "ra_wrist_3_joint": 0.3036083754001062
+      },
+      "to_joints": {
+        "ra_shoulder_pan_joint": -1.6442762338974501,
+        "ra_shoulder_lift_joint": -2.0226724183837845,
+        "ra_elbow_joint": 2.3423435232860896,
+        "ra_wrist_1_joint": -1.1594072390704229,
+        "ra_wrist_2_joint": -0.9023145825801394,
+        "ra_wrist_3_joint": 0.6047254419600447
+      },
+      "center_ray_hand_hits": [
+        {
+          "link": "rh_forearm",
+          "distance_m": 0.005044509439029883
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "azimuth_degrees": 216,
+      "camera_world": [
+        [
+          -0.5877852522924729,
+          -0.40450849718747367,
+          0.7006292692220369,
+          0.14988376484085786
+        ],
+        [
+          -0.8090169943749475,
+          0.2938926261462364,
+          -0.5090369604551271,
+          0.23044801890885966
+        ],
+        [
+          0.0,
+          -0.8660254037844387,
+          -0.49999999999999994,
+          0.24895912600057335
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "flange_target": {
+        "x": 0.11461664970330948,
+        "y": 0.1819069992463628,
+        "z": 0.24895912600057335,
+        "qx": 0.09484667146372863,
+        "qy": 0.2919080393197876,
+        "qz": -0.2941013630107445,
+        "qw": 0.9051509231989721
+      },
+      "distinct_ik": 8,
+      "valid_ik": 2,
+      "contacts": [
+        [
+          "ground_plane_user",
+          "ra_forearm_link"
+        ],
+        [
+          "ground_plane_user",
+          "ra_upper_arm_link"
+        ],
+        [
+          "ra_forearm_link",
+          "ra_wrist_3_link"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_forearm"
+        ],
+        [
+          "ra_upper_arm_link",
+          "rh_forearm"
+        ],
+        [
+          "ra_upper_arm_link",
+          "rh_palm"
+        ]
+      ],
+      "candidates": [
+        {
+          "ra_shoulder_pan_joint": 0.8073619939581493,
+          "ra_shoulder_lift_joint": -2.1870870724549425,
+          "ra_elbow_joint": 2.6306522595801725,
+          "ra_wrist_1_joint": -2.199348467654179,
+          "ra_wrist_2_joint": -2.505108745321448,
+          "ra_wrist_3_joint": -1.7994171479311987
+        },
+        {
+          "ra_shoulder_pan_joint": -1.3420663277796734,
+          "ra_shoulder_lift_joint": -0.949584636062034,
+          "ra_elbow_joint": -2.400469788068112,
+          "ra_wrist_1_joint": -2.1721570216509396,
+          "ra_wrist_2_joint": 1.0106341016788,
+          "ra_wrist_3_joint": -0.4684226847110903
+        }
+      ],
+      "path_found": true,
+      "path_points": 26,
+      "from_joints": {
+        "ra_shoulder_pan_joint": -1.6442762338974501,
+        "ra_shoulder_lift_joint": -2.0226724183837845,
+        "ra_elbow_joint": 2.3423435232860896,
+        "ra_wrist_1_joint": -1.1594072390704229,
+        "ra_wrist_2_joint": -0.9023145825801394,
+        "ra_wrist_3_joint": 0.6047254419600447
+      },
+      "to_joints": {
+        "ra_shoulder_pan_joint": 0.8073619939581493,
+        "ra_shoulder_lift_joint": -2.1870870724549425,
+        "ra_elbow_joint": 2.6306522595801725,
+        "ra_wrist_1_joint": -2.199348467654179,
+        "ra_wrist_2_joint": -2.505108745321448,
+        "ra_wrist_3_joint": -1.7994171479311987
+      },
+      "center_ray_hand_hits": [
+        {
+          "link": "rh_forearm",
+          "distance_m": 0.005044473633006195
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "azimuth_degrees": 288,
+      "camera_world": [
+        [
+          -0.9510565162951536,
+          0.1545084971874736,
+          -0.2676165673298173,
+          0.5498965937016934
+        ],
+        [
+          0.30901699437494723,
+          0.47552825814757677,
+          -0.8236391035463321,
+          0.3171576865390953
+        ],
+        [
+          0.0,
+          -0.8660254037844388,
+          -0.49999999999999994,
+          0.24895912600057335
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "flange_target": {
+        "x": 0.4928332027239842,
+        "y": 0.33569870620159215,
+        "z": 0.24895912600057335,
+        "qx": 0.24831180961183627,
+        "qy": 0.1804090898889694,
+        "qz": -0.7699673644998005,
+        "qw": 0.5594140354853104
+      },
+      "distinct_ik": 8,
+      "valid_ik": 3,
+      "contacts": [
+        [
+          "ground_plane_user",
+          "ra_forearm_link"
+        ],
+        [
+          "ground_plane_user",
+          "ra_upper_arm_link"
+        ],
+        [
+          "ra_forearm_link",
+          "ra_wrist_3_link"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_ffknuckle"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_ffproximal"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_forearm"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_palm"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_thbase"
+        ],
+        [
+          "ra_forearm_link",
+          "rh_thproximal"
+        ],
+        [
+          "ra_upper_arm_link",
+          "rh_mfknuckle"
+        ]
+      ],
+      "candidates": [
+        {
+          "ra_shoulder_pan_joint": 0.49225291563369666,
+          "ra_shoulder_lift_joint": -1.084382630978566,
+          "ra_elbow_joint": 1.376087604108145,
+          "ra_wrist_1_joint": -1.0757530395333235,
+          "ra_wrist_2_joint": -2.1672312564434217,
+          "ra_wrist_3_joint": -0.5106257169273193
+        },
+        {
+          "ra_shoulder_pan_joint": -2.3121107256034183,
+          "ra_shoulder_lift_joint": -2.071240247699095,
+          "ra_elbow_joint": -1.3354296724265788,
+          "ra_wrist_1_joint": -2.207330667302312,
+          "ra_wrist_2_joint": -5.055296908263165,
+          "ra_wrist_3_joint": -0.2599158748579132
+        },
+        {
+          "ra_shoulder_pan_joint": -2.3121107044174254,
+          "ra_shoulder_lift_joint": -2.4747507162737303,
+          "ra_elbow_joint": -1.0351371189061374,
+          "ra_wrist_1_joint": -5.245705677748181,
+          "ra_wrist_2_joint": -1.2278883839064727,
+          "ra_wrist_3_joint": -3.401508203712892
+        }
+      ],
+      "path_found": true,
+      "path_points": 20,
+      "from_joints": {
+        "ra_shoulder_pan_joint": 0.8073619939581493,
+        "ra_shoulder_lift_joint": -2.1870870724549425,
+        "ra_elbow_joint": 2.6306522595801725,
+        "ra_wrist_1_joint": -2.199348467654179,
+        "ra_wrist_2_joint": -2.505108745321448,
+        "ra_wrist_3_joint": -1.7994171479311987
+      },
+      "to_joints": {
+        "ra_shoulder_pan_joint": 0.49225291563369666,
+        "ra_shoulder_lift_joint": -1.084382630978566,
+        "ra_elbow_joint": 1.376087604108145,
+        "ra_wrist_1_joint": -1.0757530395333235,
+        "ra_wrist_2_joint": -2.1672312564434217,
+        "ra_wrist_3_joint": -0.5106257169273193
+      },
+      "center_ray_hand_hits": [
+        {
+          "link": "rh_forearm",
+          "distance_m": 0.005043920747613257
+        }
+      ]
+    }
+  ],
+  "complete_sequence": true
+}

@@ -28,21 +28,35 @@ class Session:
         self.active = False
         self.ready = False
         self.task_active = False
+        self.world = None
 
     def command(self, *args):
         return [sys.executable, str(ROOT / 'robotctl'), *args]
 
+    def environment(self):
+        from project_config import WORLD_ENV
+        environment = dict(os.environ)
+        if self.world is not None:
+            environment[WORLD_ENV] = self.world
+        return environment
+
     def spawn(self, args, label):
         process = subprocess.Popen(args, cwd=ROOT, stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT, text=True, bufsize=1,
-                                   start_new_session=True)
+                                   start_new_session=True, env=self.environment())
+
+        process.output_lines = []
 
         def read():
             with process.stdout:
                 for line in process.stdout:
-                    self.output('[%s] %s' % (label, line.rstrip()))
+                    if 'CUSTOM_STATE_JSON=' in line:
+                        process.output_lines.append(line.rstrip())
+                    else:
+                        self.output('[%s] %s' % (label, line.rstrip()))
 
-        threading.Thread(target=read, daemon=True).start()
+        process.output_thread = threading.Thread(target=read, daemon=True)
+        process.output_thread.start()
         return process
 
     def ensure_running(self):
@@ -68,6 +82,8 @@ class Session:
                 time.sleep(0.1)
             if process.returncode:
                 raise RuntimeError('%s failed (exit %d). See the log below.' % (' '.join(args), process.returncode))
+            process.output_thread.join(timeout=2)
+            return '\n'.join(process.output_lines)
         finally:
             if process.poll() is None:
                 os.killpg(process.pid, signal.SIGTERM)
@@ -166,8 +182,9 @@ class Session:
 
     def replay(self, command, selection='latest'):
         from task_definition import TASK_VERSION
+        from custom_trajectory import TASK_VERSION as CUSTOM_VERSION
         from trajectory_store import resolve_run
-        run = resolve_run(ROOT / 'trajectories', selection, task_version=TASK_VERSION)
+        run = resolve_run(ROOT / 'trajectories', selection, task_version=(TASK_VERSION, CUSTOM_VERSION))
         arguments = ('--trajectory-root', '/project/trajectories/' + run.name)
         if command == 'check':
             self.run(self.mode, 'check', *arguments)
@@ -176,12 +193,25 @@ class Session:
         else:
             raise ValueError('Use check or replay for a saved task')
 
+    def capture_state(self, source='rviz'):
+        import json
+        if self.mode != 'sim' or not self.ready:
+            raise RuntimeError('Start simulation and wait for readiness first.')
+        output = self.run('sim', 'custom-capture', '--source', source, timeout=30)
+        for line in output.splitlines():
+            if 'CUSTOM_STATE_JSON=' in line:
+                return json.JSONDecoder().raw_decode(line.partition('CUSTOM_STATE_JSON=')[2])[0]
+        raise RuntimeError('Robot state capture returned no joint angles. Inspect the log.')
+
     def terminal_task(self, command, *extra):
         self.check_cancelled()
         self.ensure_running()
         if not self.ready:
             raise RuntimeError('Start the session and wait for readiness first.')
         argv = [sys.executable, str(ROOT / 'app/terminal_task.py'), self.mode, command, *extra]
+        if self.world is not None:
+            from project_config import WORLD_ENV
+            argv = ['env', WORLD_ENV + '=' + self.world, *argv]
         terminal = shutil.which('gnome-terminal') or shutil.which('x-terminal-emulator')
         if not terminal:
             raise RuntimeError('Install a desktop terminal to use interactive tasks.')
@@ -190,7 +220,8 @@ class Session:
         self.task_active = True
         process = None
         try:
-            process = subprocess.Popen([terminal, *prefix, *argv], cwd=ROOT, start_new_session=True)
+            process = subprocess.Popen([terminal, *prefix, *argv], cwd=ROOT, start_new_session=True,
+                                       env=self.environment())
             while process.poll() is None:
                 # Release the session lock when simulation shutdown is requested,
                 # even if the terminal is waiting at a replay or error prompt.

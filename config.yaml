@@ -1,7 +1,7 @@
 # Shared workstation settings. Distances: metres; angles: radians; color: RGBA.
 # Paths are relative to this project. Restart the session after scene/robot edits.
 # network: used for real control; exported environment variables override these.
-# simulation.world: shared simulation/real environment; cell.world adds walls.
+# Choose the world in the Simulation or Real Control panel before starting.
 # object: runtime name stays rect_object to match the planner/replay workflow.
 # object.pose: [x, y, z, roll, pitch, yaw] in the world frame.
 # object.mesh uses the imported GraspIt mesh in millimetres; mesh_scale converts to metres.
@@ -20,13 +20,51 @@ network:
   ur5_reverse_ip: ''
   ros_port: 11311
 simulation:
-  world: assets/worlds/open.world
   gui: true
   # Replay motion speed only; real control and planning keep their normal timing.
   replay_speed: 3.0
   # Smaller steps reduce closed-finger shaking during arm motion; reset to apply.
   # Seconds: 0.00025 = 0.25 ms (more CPU); original setting was 0.001.
   physics_step: 0.00025
+camera_scan:
+  # Five DefMapSim views at azimuths 0, 72, 144, 216, 288 degrees.
+  distance: 0.4
+  elevation_degrees: 30.0
+  orbit_yaw_degrees: 0.0
+  roll_degrees: 180.0  # Turn each camera view upside down while keeping its aim.
+  reference_offset_right: 0.035  # Reference is 3.5 cm right of depth optical center.
+  # tofuprintfinal convex-hull center in mesh-local metres; update for another model.
+  object_center_local: [-0.0004370113, -0.000512874, 0.0014823601]
+  # Assumed depth optical frame relative to ra_flange; replace with camera calibration.
+  # Move the mount, keeping the exact 0.4 m optical targets unchanged.
+  # 2 cm toward the wrist (-X), 8 cm to the side (-Y), in flange coordinates.
+  mount_translation: [-0.02, -0.08, 0.0]
+  mount_forward: [0.9949708551, 0.0, 0.1001648512]
+  mount_up: [0.0, 0.0, 1.0]
+  # Close to this fist before any camera arm motion; keep it through return home.
+  # Independent of grasp.joint_angles; distal finger coupling is J1 = 0.8 * J2.
+  fist_joint_angles:
+    rh_FFJ1: 1.2
+    rh_FFJ2: 1.5
+    rh_FFJ3: 1.5
+    rh_FFJ4: 0.0
+    rh_MFJ1: 1.2
+    rh_MFJ2: 1.5
+    rh_MFJ3: 1.5
+    rh_MFJ4: 0.0
+    rh_RFJ1: 1.2
+    rh_RFJ2: 1.5
+    rh_RFJ3: 1.5
+    rh_RFJ4: 0.0
+    rh_THJ1: 0.73
+    rh_THJ2: 0.6981317007977318
+    rh_THJ4: 1.22
+    rh_THJ5: 0.05
+  ik_attempts: 64
+  ik_timeout: 0.05
+  planning_time: 5.0
+  max_path_attempts: 40
+  pause_at_view: 1.0
 trajectories:
   # GraspIt runs use the input filename stem (grasps, grasps_001, ...).
   # Manual runs use YYYY-MM-DD_HH-MM-SS (Asia/Tokyo); each has arm/ and hand/.

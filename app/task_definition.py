@@ -46,7 +46,7 @@ def load_task(run):
     try:
         task = json.loads((Path(run) / 'task.json').read_text())
     except (OSError, ValueError) as exc:
-        raise ValueError('This recording uses the old task format. Generate a new five-stage run with Plan, execute & save.') from exc
+        raise ValueError('This recording uses the old task format. Generate a new five-stage run with Pick up trajectory.') from exc
     if not isinstance(task, dict) or task.get('version') != TASK_VERSION or task.get('stages') != STAGES:
         raise ValueError('Recording does not match the current five-stage task format')
     thumb_preparation_joints(task)

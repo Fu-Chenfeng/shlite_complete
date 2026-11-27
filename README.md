@@ -61,9 +61,21 @@ Open **`Simulation.sh`** or **`Real-Control.sh`** from the project folder
 # For real hardware: ./Real-Control.sh
 ```
 
-In simulation, click **Start**, then **Plan, execute & save**, or select a saved
+Choose a **World** in either panel before starting; the choice belongs to that
+session and is not saved in `config.yaml`.
+
+In simulation, click **Start**, then **Pick up trajectory**, or select a saved
 trajectory and **Replay**. Replay waits for Enter before each stage; `q` quits.
 Saved runs are included under [`trajectories/`](trajectories/).
+
+**Custom trajectory** opens a task sequence editor after simulation starts. Add or
+remove tasks with **+ / −**, capture RViz states, and double-click tasks to edit
+arm/hand angles or read recorded goals. Plan, execute and save with a default name
+of `custom_YYYY-MM-DD_HH-MM-SS`; see the [custom trajectory workflow](contents.md#custom-trajectories).
+
+**5 views + home** plans, executes and saves a wrist-camera tour around the object
+in simulation. Adjust `camera_scan` in `config.yaml`; see the
+[camera tour workflow](contents.md#five-view-camera-tour). Image capture is not connected yet.
 
 For real hardware, first configure the NUC/UR5 connections and clock synchronization
 using [NEW_MACHINE.md](docs/NEW_MACHINE.md) and the

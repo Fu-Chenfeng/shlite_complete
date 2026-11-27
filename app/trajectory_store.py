@@ -20,16 +20,16 @@ def write_metadata(run, metadata):
     temporary.replace(run / 'run.json')
 
 
-def create_run(root=None, now=None, source='planned', task_version=None, grasp_file=None):
+def create_run(root=None, now=None, source='planned', task_version=None, grasp_file=None, name=None):
     root = Path(root) if root is not None else archive_root()
     root.mkdir(parents=True, exist_ok=True)
     now = now or datetime.now(TOKYO)
     if now.tzinfo is None:
         raise ValueError('Recording timestamps must include a timezone')
     now = now.astimezone(TOKYO)
-    name = Path(grasp_file).stem if grasp_file else now.strftime('%Y-%m-%d_%H-%M-%S')
-    if not RUN_NAME.fullmatch(name):
-        raise ValueError('Grasp filename cannot be used as a trajectory folder name: %s' % name)
+    name = name if name is not None else Path(grasp_file).stem if grasp_file else now.strftime('%Y-%m-%d_%H-%M-%S')
+    if not isinstance(name, str) or not RUN_NAME.fullmatch(name):
+        raise ValueError('Invalid trajectory folder name: %s' % name)
     suffix = 1 if name == 'latest' else 0  # "latest" is the replay selection keyword.
     while True:
         run = root / (name if not suffix else '%s_%03d' % (name, suffix))
@@ -70,7 +70,8 @@ def matches_task(run, task_version):
     if task_version is None:
         return True
     try:
-        return json.loads((run / 'run.json').read_text()).get('task_version') == task_version
+        version = json.loads((run / 'run.json').read_text()).get('task_version')
+        return version in task_version if isinstance(task_version, tuple) else version == task_version
     except (OSError, ValueError, AttributeError):
         return False
 
@@ -121,6 +122,7 @@ def configured_run(task_version=None):
 def replay_run_choices(root=None):
     """Describe saved runs for the panel without deserializing trajectory pickles."""
     from task_definition import TASK_VERSION, actions, load_task
+    from custom_trajectory import TASK_VERSION as CUSTOM_VERSION, load_task as load_custom_task
     root = Path(root) if root is not None else archive_root()
     if not root.is_dir():
         return []
@@ -133,12 +135,19 @@ def replay_run_choices(root=None):
             status = metadata.get('status', 'incomplete')
             if status != 'complete':
                 reason = status
-            elif metadata.get('task_version') != TASK_VERSION:
+            elif metadata.get('task_version') == 'camera_views_v1':
+                reason = 'camera scan (separate from grasp replay)'
+            elif metadata.get('task_version') not in (TASK_VERSION, CUSTOM_VERSION):
                 reason = 'older sequence'
             else:
-                load_task(run)
-                required = [(action['group'], action['file']) for action in actions()]
-                required += [('hand', action['target']) for action in actions() if 'target' in action]
+                if metadata.get('task_version') == CUSTOM_VERSION:
+                    task = load_custom_task(run)
+                    run_actions = [a for stage in task['stages'] for a in stage['actions']]
+                else:
+                    load_task(run)
+                    run_actions = list(actions())
+                required = [(action['group'], action['file']) for action in run_actions]
+                required += [('hand', action['target']) for action in run_actions if 'target' in action]
                 reason = 'ready' if all((run / group / filename).is_file() for group, filename in required) else 'missing files'
         except (OSError, ValueError, TypeError, AttributeError):
             reason = 'invalid recording'

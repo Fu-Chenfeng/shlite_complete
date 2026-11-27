@@ -1,0 +1,547 @@
+{
+  "mount": "back2cm_side8cm",
+  "config": {
+    "distance": 0.4,
+    "elevation_degrees": 30.0,
+    "orbit_yaw_degrees": 0.0,
+    "roll_degrees": 180.0,
+    "reference_offset_right": 0.035,
+    "object_center_local": [
+      -0.0004370113,
+      -0.000512874,
+      0.0014823601
+    ],
+    "mount_translation": [
+      -0.02,
+      -0.08,
+      0.0
+    ],
+    "mount_forward": [
+      0.9949708551,
+      0.0,
+      0.1001648512
+    ],
+    "mount_up": [
+      0.0,
+      0.0,
+      1.0
+    ],
+    "fist_joint_angles": {
+      "rh_FFJ1": 1.2,
+      "rh_FFJ2": 1.5,
+      "rh_FFJ3": 1.5,
+      "rh_FFJ4": 0.0,
+      "rh_MFJ1": 1.2,
+      "rh_MFJ2": 1.5,
+      "rh_MFJ3": 1.5,
+      "rh_MFJ4": 0.0,
+      "rh_RFJ1": 1.2,
+      "rh_RFJ2": 1.5,
+      "rh_RFJ3": 1.5,
+      "rh_RFJ4": 0.0,
+      "rh_THJ1": 0.73,
+      "rh_THJ2": 0.6981317007977318,
+      "rh_THJ4": 1.22,
+      "rh_THJ5": 0.05
+    },
+    "ik_attempts": 64,
+    "ik_timeout": 0.05,
+    "planning_time": 5.0,
+    "max_path_attempts": 40,
+    "pause_at_view": 1.0
+  },
+  "geometry": {
+    "center_world": [
+      0.40956298869999996,
+      -0.0014823601,
+      0.048959126000000006
+    ],
+    "flange_from_optical": [
+      [
+        0.0,
+        0.10016485120428989,
+        0.994970855142613,
+        -0.02
+      ],
+      [
+        -1.0,
+        0.0,
+        0.0,
+        -0.08
+      ],
+      [
+        0.0,
+        -0.994970855142613,
+        0.10016485120428989,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "views": [
+      {
+        "index": 0,
+        "azimuth_degrees": 0,
+        "camera_optical_to_world": [
+          [
+            6.123233995736765e-17,
+            -0.49999999999999994,
+            -0.8660254037844387,
+            0.7559731502137754
+          ],
+          [
+            -1.0,
+            -6.943591797848997e-17,
+            -3.0616169978683824e-17,
+            -0.03648236009999999
+          ],
+          [
+            -4.482518391512303e-17,
+            0.8660254037844387,
+            -0.49999999999999994,
+            0.24895912599999998
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "flange_pose": {
+          "x": 0.7377381009701599,
+          "y": 0.04351763990000001,
+          "z": 0.2407443235627579,
+          "qx": -2.5225187133892852e-17,
+          "qy": 0.9776892303234128,
+          "qz": 2.834367789260771e-17,
+          "qw": 0.21005658501844862
+        }
+      },
+      {
+        "index": 1,
+        "azimuth_degrees": 72,
+        "camera_optical_to_world": [
+          [
+            -0.9510565162951536,
+            -0.1545084971874738,
+            -0.2676165673298175,
+            0.48332263756159655
+          ],
+          [
+            -0.3090169943749475,
+            0.47552825814757677,
+            0.823639103546332,
+            -0.341753596321656
+          ],
+          [
+            -8.713569022031996e-17,
+            0.8660254037844388,
+            -0.5,
+            0.24895912600000003
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "flange_pose": {
+          "x": 0.5537722187556676,
+          "y": -0.29968967436355665,
+          "z": 0.240744323562758,
+          "qx": 0.574671310909281,
+          "qy": 0.7909672025490031,
+          "qz": -0.12346816282076409,
+          "qw": 0.1699393470602909
+        }
+      },
+      {
+        "index": 2,
+        "azimuth_degrees": 144,
+        "camera_optical_to_world": [
+          [
+            -0.5877852522924732,
+            0.40450849718747356,
+            0.7006292692220367,
+            0.1087387971809487
+          ],
+          [
+            0.8090169943749473,
+            0.29389262614623674,
+            0.5090369604551274,
+            -0.1767815494789278
+          ],
+          [
+            -1.5559552750334526e-16,
+            0.8660254037844386,
+            -0.5,
+            0.24895912599999998
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "flange_pose": {
+          "x": 0.17051408209569552,
+          "y": -0.23078461600869937,
+          "z": 0.24074432356275793,
+          "qx": 0.929837713410675,
+          "qy": 0.30212258738729686,
+          "qz": -0.19977568397250248,
+          "qw": 0.06491105455106667
+        }
+      },
+      {
+        "index": 3,
+        "azimuth_degrees": 216,
+        "camera_optical_to_world": [
+          [
+            0.5877852522924729,
+            0.4045084971874737,
+            0.7006292692220369,
+            0.14988376484142174
+          ],
+          [
+            0.8090169943749475,
+            -0.29389262614623624,
+            -0.5090369604551271,
+            0.23044801888517405
+          ],
+          [
+            -1.5559552750334528e-16,
+            0.8660254037844387,
+            -0.4999999999999999,
+            0.24895912599999998
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "flange_pose": {
+          "x": 0.11761340938937288,
+          "y": 0.15500836631495407,
+          "z": 0.24074432356275793,
+          "qx": 0.929837713410675,
+          "qy": -0.30212258738729664,
+          "qz": -0.19977568397250245,
+          "qw": -0.06491105455106647
+        }
+      },
+      {
+        "index": 4,
+        "azimuth_degrees": 288,
+        "camera_optical_to_world": [
+          [
+            0.9510565162951536,
+            -0.15450849718747348,
+            -0.2676165673298173,
+            0.5498965937022573
+          ],
+          [
+            -0.3090169943749472,
+            -0.47552825814757677,
+            -0.8236391035463321,
+            0.31715768651540965
+          ],
+          [
+            -8.713569022031998e-17,
+            0.8660254037844388,
+            -0.4999999999999999,
+            0.24895912599999998
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "flange_pose": {
+          "x": 0.4681771322891038,
+          "y": 0.3245364836573019,
+          "z": 0.24074432356275793,
+          "qx": -0.5746713109092811,
+          "qy": 0.790967202549003,
+          "qz": 0.12346816282076416,
+          "qw": 0.16993934706029076
+        }
+      }
+    ]
+  },
+  "fk_errors": [
+    {
+      "view": 0,
+      "position_error_m": 6.952772418087303e-06,
+      "rotation_error_rad": 1.6366034273962814e-05
+    },
+    {
+      "view": 72,
+      "position_error_m": 4.660645920375984e-06,
+      "rotation_error_rad": 1.0802036650559408e-05
+    },
+    {
+      "view": 144,
+      "position_error_m": 1.5473856015450957e-06,
+      "rotation_error_rad": 1.895331640506663e-05
+    },
+    {
+      "view": 216,
+      "position_error_m": 5.0282365003613504e-06,
+      "rotation_error_rad": 1.1984758557383794e-05
+    },
+    {
+      "view": 288,
+      "position_error_m": 7.46918187996195e-06,
+      "rotation_error_rad": 1.3694840024083135e-05
+    }
+  ],
+  "motion_executed": false,
+  "paths": [
+    {
+      "file": "00_Close_fist.pkl",
+      "group": "hand",
+      "view": null,
+      "target": {
+        "rh_FFJ1": 1.2,
+        "rh_FFJ2": 1.5,
+        "rh_FFJ3": 1.5,
+        "rh_FFJ4": 0.0,
+        "rh_MFJ1": 1.2,
+        "rh_MFJ2": 1.5,
+        "rh_MFJ3": 1.5,
+        "rh_MFJ4": 0.0,
+        "rh_RFJ1": 1.2,
+        "rh_RFJ2": 1.5,
+        "rh_RFJ3": 1.5,
+        "rh_RFJ4": 0.0,
+        "rh_THJ1": 0.73,
+        "rh_THJ2": 0.6981317007977318,
+        "rh_THJ4": 1.22,
+        "rh_THJ5": 0.05
+      },
+      "points": 650
+    },
+    {
+      "file": "01_Start_at_home.pkl",
+      "group": "arm",
+      "view": null,
+      "target": {
+        "ra_shoulder_pan_joint": -0.873,
+        "ra_shoulder_lift_joint": -2.094,
+        "ra_elbow_joint": 2.094,
+        "ra_wrist_1_joint": -0.873,
+        "ra_wrist_2_joint": -0.611,
+        "ra_wrist_3_joint": -3.142
+      },
+      "points": 2
+    },
+    {
+      "file": "02_View_000.pkl",
+      "group": "arm",
+      "view": 0,
+      "target": {
+        "ra_shoulder_pan_joint": -0.08101444710355313,
+        "ra_shoulder_lift_joint": -0.45129608744442173,
+        "ra_elbow_joint": 0.2607757287992464,
+        "ra_wrist_1_joint": -0.23397795751448783,
+        "ra_wrist_2_joint": -1.6446563569931216,
+        "ra_wrist_3_joint": -3.1749294054584656
+      },
+      "points": 19
+    },
+    {
+      "file": "03_View_072.pkl",
+      "group": "arm",
+      "view": 1,
+      "target": {
+        "ra_shoulder_pan_joint": -0.7313191071600964,
+        "ra_shoulder_lift_joint": -0.9396840375882698,
+        "ra_elbow_joint": 1.1601866805908099,
+        "ra_wrist_1_joint": -0.7005763388021063,
+        "ra_wrist_2_joint": -1.0959148662506673,
+        "ra_wrist_3_joint": -2.907860765734984
+      },
+      "points": 11
+    },
+    {
+      "file": "04_View_144.pkl",
+      "group": "arm",
+      "view": 2,
+      "target": {
+        "ra_shoulder_pan_joint": -1.5684040000816397,
+        "ra_shoulder_lift_joint": -1.9175835547383333,
+        "ra_elbow_joint": 2.313518403485767,
+        "ra_wrist_1_joint": -1.0514617196326153,
+        "ra_wrist_2_joint": -0.7393552351038902,
+        "ra_wrist_3_joint": -2.6248924595792476
+      },
+      "points": 13
+    },
+    {
+      "file": "05_View_216.pkl",
+      "group": "arm",
+      "view": 3,
+      "target": {
+        "ra_shoulder_pan_joint": 0.7372624451446564,
+        "ra_shoulder_lift_joint": -2.1575820546470195,
+        "ra_elbow_joint": 2.7515607044286554,
+        "ra_wrist_1_joint": -2.5895749705421727,
+        "ra_wrist_2_joint": -2.673923054200262,
+        "ra_wrist_3_joint": -5.1814276752310455
+      },
+      "points": 31
+    },
+    {
+      "file": "06_View_288.pkl",
+      "group": "arm",
+      "view": 4,
+      "target": {
+        "ra_shoulder_pan_joint": 0.5043669897981101,
+        "ra_shoulder_lift_joint": -1.0837936014886325,
+        "ra_elbow_joint": 1.399123866865014,
+        "ra_wrist_1_joint": -0.8681551573251218,
+        "ra_wrist_2_joint": -2.2433666688036196,
+        "ra_wrist_3_joint": -3.508569574614774
+      },
+      "points": 21
+    },
+    {
+      "file": "07_Return_home.pkl",
+      "group": "arm",
+      "view": null,
+      "target": {
+        "ra_shoulder_pan_joint": -0.873,
+        "ra_shoulder_lift_joint": -2.094,
+        "ra_elbow_joint": 2.094,
+        "ra_wrist_1_joint": -0.873,
+        "ra_wrist_2_joint": -0.611,
+        "ra_wrist_3_joint": -3.142
+      },
+      "points": 16
+    }
+  ],
+  "optical_targets_unchanged": true,
+  "arm_joint_tolerance_rad": 1e-05,
+  "date": "2026-11-17",
+  "validation_environment": "Isolated Docker container, networking disabled, ROS synthetic home/open-hand feedback, motion-rejecting controllers",
+  "unexpected_motion_goals": 0,
+  "all_eight_segments_planned": true,
+  "visibility": {
+    "purpose": "Read-only visibility/IK evidence for exact five camera targets with revised assumed mount",
+    "source": "Existing 16-seed live-simulation sweep; no additional solve or motion executed to write this report",
+    "camera_scan": {
+      "distance": 0.4,
+      "elevation_degrees": 30.0,
+      "orbit_yaw_degrees": 0.0,
+      "roll_degrees": 180.0,
+      "reference_offset_right": 0.035,
+      "mount_translation": [
+        -0.02,
+        -0.08,
+        0.0
+      ],
+      "mount_forward": [
+        0.9949708551,
+        0.0,
+        0.1001648512
+      ],
+      "mount_up": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "fist_joint_angles": {
+        "rh_FFJ1": 1.2,
+        "rh_FFJ2": 1.5,
+        "rh_FFJ3": 1.5,
+        "rh_FFJ4": 0.0,
+        "rh_MFJ1": 1.2,
+        "rh_MFJ2": 1.5,
+        "rh_MFJ3": 1.5,
+        "rh_MFJ4": 0.0,
+        "rh_RFJ1": 1.2,
+        "rh_RFJ2": 1.5,
+        "rh_RFJ3": 1.5,
+        "rh_RFJ4": 0.0,
+        "rh_THJ1": 0.73,
+        "rh_THJ2": 0.6981317007977318,
+        "rh_THJ4": 1.22,
+        "rh_THJ5": 0.05
+      }
+    },
+    "camera_target_transform_comparison": {
+      "reference": "Original mount at distance 0.4 m and image roll 180 degrees",
+      "all_five_optical_to_world_matrices_unchanged": true,
+      "comparison": "numpy.testing.assert_allclose(atol=0; identical calculated optical targets)"
+    },
+    "method": {
+      "ik": "/compute_ik, right_arm, ra_flange, avoid_collisions=false; 16 seeds (home then deterministic random arm seeds), timeout 0.03 s each",
+      "state_validity": "Each IK solution checked with /check_state_validity group_name empty against live simulation planning scene; configured fist fixed in each candidate RobotState",
+      "visibility": "/compute_fk transforms rh_ hand URDF collision meshes to world; triangle ray intersection from depth optical center toward configured object center",
+      "intersection_interval_m": "greater than 0.001 m from camera and less than camera-to-center distance minus 0.04 m",
+      "motion_executed": false,
+      "scene_modified": false
+    },
+    "views": [
+      {
+        "index": 0,
+        "azimuth_degrees": 0,
+        "ik_attempts": 16,
+        "ik_successes": 16,
+        "collision_free_ik_samples": 7,
+        "object_center_ray_hand_hits": []
+      },
+      {
+        "index": 1,
+        "azimuth_degrees": 72,
+        "ik_attempts": 16,
+        "ik_successes": 16,
+        "collision_free_ik_samples": 6,
+        "object_center_ray_hand_hits": []
+      },
+      {
+        "index": 2,
+        "azimuth_degrees": 144,
+        "ik_attempts": 16,
+        "ik_successes": 16,
+        "collision_free_ik_samples": 8,
+        "object_center_ray_hand_hits": []
+      },
+      {
+        "index": 3,
+        "azimuth_degrees": 216,
+        "ik_attempts": 16,
+        "ik_successes": 16,
+        "collision_free_ik_samples": 1,
+        "object_center_ray_hand_hits": []
+      },
+      {
+        "index": 4,
+        "azimuth_degrees": 288,
+        "ik_attempts": 16,
+        "ik_successes": 16,
+        "collision_free_ik_samples": 8,
+        "object_center_ray_hand_hits": []
+      }
+    ],
+    "limitations": [
+      "Visibility checks only the object-center ray, not the full object silhouette, full image crop, stereo overlap, or image quality.",
+      "Only rh_ hand geometry was tested for occlusion; no camera housing, bracket, cables, or arm occlusion was modeled.",
+      "URDF mesh collision shapes are used; cylinder and sphere shapes are triangulated approximations.",
+      "The live scene current allowed-collision matrix was used for sampled IK validity; strict hand-object collision checking and complete route/FK accuracy are covered separately by the parent isolated verification.",
+      "Mount is an assumed simulated calibration, not a physically measured or hardware-validated installation."
+    ]
+  }
+}
